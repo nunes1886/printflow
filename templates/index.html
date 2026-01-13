@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PrintFlow - Gestão</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    />
+    <style>
+      body {
+        background-color: #0079bf;
+        font-family: "Segoe UI", sans-serif;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      .navbar-custom {
+        background-color: rgba(0, 0, 0, 0.2);
+        padding: 8px 16px;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        backdrop-filter: blur(5px);
+      }
+      .board-canvas {
+        flex-grow: 1;
+        padding: 20px;
+        overflow-x: auto;
+        white-space: nowrap;
+        display: flex;
+        align-items: flex-start;
+        gap: 20px;
+      }
+      .kanban-list {
+        background-color: #ebecf0;
+        width: 320px;
+        min-width: 320px;
+        border-radius: 6px;
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        max-height: calc(100vh - 80px);
+      }
+      .list-cards {
+        flex-grow: 1;
+        overflow-y: auto;
+        padding: 4px;
+        min-height: 50px;
+      }
+
+      /* CARD ESTILO NOVO */
+      .trello-card {
+        background-color: #fff;
+        border-radius: 4px;
+        box-shadow: 0 1px 2px rgba(9, 30, 66, 0.25);
+        padding: 10px;
+        margin-bottom: 10px;
+        cursor: pointer;
+        color: #172b4d;
+        border-left-width: 6px;
+        border-left-style: solid;
+        white-space: normal;
+        position: relative;
+        transition: transform 0.1s;
+      }
+      .trello-card:hover {
+        transform: translateY(-2px);
+        background: #f4f5f7;
+      }
+
+      .status-badge {
+        font-size: 0.75rem;
+        padding: 3px 8px;
+        border-radius: 10px;
+        color: white;
+        font-weight: bold;
+        text-transform: uppercase;
+        margin-bottom: 8px;
+        display: inline-block;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+      }
+
+      /* CHAT STYLES */
+      .chat-btn {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: #2ecc71;
+        color: white;
+        border: none;
+        font-size: 24px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+        z-index: 1000;
+        transition: all 0.3s;
+      }
+      .chat-btn:hover {
+        background: #27ae60;
+        transform: scale(1.1);
+      }
+
+      .chat-notification {
+        background-color: #e74c3c !important;
+        animation: pulse 1.5s infinite;
+      }
+      @keyframes pulse {
+        0% {
+          box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7);
+        }
+        70% {
+          box-shadow: 0 0 0 15px rgba(231, 76, 60, 0);
+        }
+        100% {
+          box-shadow: 0 0 0 0 rgba(231, 76, 60, 0);
+        }
+      }
+
+      .chat-container {
+        height: calc(100vh - 160px);
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 10px;
+        background: #f8f9fa;
+      }
+      .msg-bubble {
+        max-width: 80%;
+        padding: 8px 12px;
+        border-radius: 10px;
+        font-size: 0.9rem;
+      }
+      .msg-me {
+        align-self: flex-end;
+        background: #dcf8c6;
+        border-bottom-right-radius: 0;
+      }
+      .msg-other {
+        align-self: flex-start;
+        background: #fff;
+        border: 1px solid #ddd;
+        border-bottom-left-radius: 0;
+      }
+      .msg-user {
+        font-size: 0.75rem;
+        font-weight: bold;
+        color: #555;
+        margin-bottom: 2px;
+      }
+      .msg-time {
+        font-size: 0.65rem;
+        color: #999;
+        text-align: right;
+        margin-top: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <audio id="soundMsg" src="/static/sounds/message.mp3"></audio>
+    <audio id="soundCard" src="/static/sounds/new_card.mp3"></audio>
+
+    <div class="navbar-custom">
+      <div class="fw-bold fs-5"><i class="fas fa-print me-2"></i>PrintFlow</div>
+      {% if user.is_admin %}
+      <div>
+        <button
+          class="btn btn-light text-primary fw-bold btn-sm px-3 shadow-sm"
+          onclick="abrirModalCriar()"
+        >
+          <i class="fas fa-plus me-2"></i>Novo Pedido
+        </button>
+        <a
+          href="/configuracoes"
+          class="btn btn-light text-secondary fw-bold btn-sm px-3 shadow-sm ms-2"
+        >
+          <i class="fas fa-cog"></i>
+        </a>
+      </div>
+      {% endif %}
+      <div class="small d-flex align-items-center gap-3">
+        <span><i class="fas fa-user-circle me-1"></i>{{ user.username }}</span>
+        <a href="/logout" class="btn btn-sm btn-danger py-0"
+          ><i class="fas fa-sign-out-alt"></i
+        ></a>
+      </div>
+    </div>
+
+    <div class="board-canvas">
+      {% for setor in setores %}
+      <div class="kanban-list">
+        <div
+          class="list-header fw-bold text-secondary mb-2 d-flex justify-content-between"
+        >
+          {{ setor.nome }}
+          <span class="badge bg-secondary rounded-pill"
+            >{{ setor.cards|selectattr("is_archived", "equalto",
+            False)|list|length }}</span
+          >
+        </div>
+        <div
+          id="setor-{{ setor.id }}"
+          class="list-cards"
+          data-setor-id="{{ setor.id }}"
+        >
+          {% for card in setor.cards %} {% if not card.is_archived %}
+          <div
+            class="trello-card"
+            data-id="{{ card.id }}"
+            onclick="abrirModalEditar('{{ card.id }}')"
+            style="border-left-color: {{ card.status_ref.cor if card.status_ref and card.status_ref.cor else '#ccc' }} !important;"
+          >
+            <div
+              class="status-badge"
+              style="background-color: {{ card.status_ref.cor if card.status_ref and card.status_ref.cor else '#ccc' }};"
+            >
+              {{ card.status_ref.nome if card.status_ref else 'Sem Status' }}
+            </div>
+
+            <div class="fw-bold">{{ card.titulo }}</div>
+            <div class="small text-muted">{{ card.cliente }}</div>
+
+            {% if card.created_by %}
+            <div
+              class="small text-muted mt-1"
+              style="
+                font-size: 0.75rem;
+                border-top: 1px solid #eee;
+                padding-top: 4px;
+              "
+            >
+              <i class="fas fa-user me-1"></i> {{ card.created_by }}
+            </div>
+            {% endif %} {% if card.imagem_path %}
+            <i
+              class="fas fa-image text-primary small mt-2"
+              title="Ver Print"
+            ></i>
+            {% endif %}
+          </div>
+          {% endif %} {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <button
+      id="btnChatGlobal"
+      class="chat-btn"
+      type="button"
+      data-bs-toggle="offcanvas"
+      data-bs-target="#chatOffcanvas"
+    >
+      <i class="fas fa-comments"></i>
+    </button>
+
+    <div class="offcanvas offcanvas-end" tabindex="-1" id="chatOffcanvas">
+      <div class="offcanvas-header bg-primary text-white">
+        <h5 class="offcanvas-title">
+          <i class="fas fa-users me-2"></i>Chat da Equipe
+        </h5>
+        <div class="d-flex gap-2">
+          {% if user.is_admin %}
+          <button
+            type="button"
+            class="btn btn-sm btn-outline-light"
+            onclick="limparChat()"
+            title="Limpar Histórico"
+          >
+            <i class="fas fa-trash"></i>
+          </button>
+          {% endif %}
+          <button
+            type="button"
+            class="btn-close btn-close-white"
+            data-bs-dismiss="offcanvas"
+          ></button>
+        </div>
+      </div>
+      <div class="offcanvas-body p-0 d-flex flex-column">
+        <div id="chatBox" class="chat-container"></div>
+        <div class="p-2 border-top bg-light">
+          <form
+            id="formChat"
+            onsubmit="enviarMensagem(event)"
+            class="d-flex gap-2"
+          >
+            <input
+              type="text"
+              id="msgInput"
+              class="form-control"
+              placeholder="Digite..."
+              required
+              autocomplete="off"
+            />
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-paper-plane"></i>
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="taskModal" tabindex="-1">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <form id="formTask" action="/adicionar" method="POST">
+            <div class="modal-header bg-light">
+              <h5 class="modal-title fw-bold" id="modalTitle">Pedido</h5>
+              <button
+                type="button"
+                class="btn-close"
+                data-bs-dismiss="modal"
+              ></button>
+            </div>
+            <div class="modal-body">
+              <input type="hidden" name="id" id="cardId" />
+              <div
+                id="infoCriador"
+                class="alert alert-info py-1 small mb-3"
+                style="display: none"
+              ></div>
+
+              <div class="row">
+                <div class="col-md-7 border-end">
+                  <label class="small fw-bold text-muted">Título / OS</label>
+                  <input
+                    type="text"
+                    name="titulo"
+                    id="cardTitulo"
+                    class="form-control fw-bold mb-3"
+                    required
+                    {%
+                    if
+                    not
+                    user.is_admin
+                    %}readonly{%
+                    endif
+                    %}
+                  />
+                  <label class="small fw-bold text-muted">Cliente</label>
+                  <input
+                    type="text"
+                    name="cliente"
+                    id="cardCliente"
+                    class="form-control mb-3"
+                    {%
+                    if
+                    not
+                    user.is_admin
+                    %}readonly{%
+                    endif
+                    %}
+                  />
+                  <label class="small fw-bold text-muted">Descrição</label>
+                  <textarea
+                    name="descricao"
+                    id="cardDescricao"
+                    class="form-control"
+                    rows="4"
+                    {%
+                    if
+                    not
+                    user.is_admin
+                    %}readonly{%
+                    endif
+                    %}
+                  ></textarea>
+                </div>
+                <div class="col-md-5">
+                  <div class="bg-light p-3 rounded mb-3">
+                    <label class="small fw-bold">Setor</label>
+                    <select
+                      name="setor_id"
+                      id="cardSetor"
+                      class="form-select mb-2"
+                    >
+                      {% for s in setores %}
+                      <option value="{{ s.id }}">{{ s.nome }}</option>
+                      {% endfor %}
+                    </select>
+                    <label class="small fw-bold">Status</label>
+                    <select
+                      name="status_id"
+                      id="cardStatus"
+                      class="form-select"
+                    >
+                      {% for st in lista_status %}
+                      <option
+                        value="{{ st.id }}"
+                        style="color:'{{st.cor}}'; font-weight:bold"
+                      >
+                        {{ st.nome }}
+                      </option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div
+                    class="border dashed p-3 text-center mb-2"
+                    id="pasteArea"
+                    contenteditable="true"
+                  >
+                    <small class="text-muted"
+                      >Clique e Ctrl+V para colar Print</small
+                    >
+                  </div>
+                  <img
+                    id="previewImage"
+                    style="
+                      max-width: 100%;
+                      display: none;
+                      border: 1px solid #ccc;
+                    "
+                  />
+                  <input
+                    type="hidden"
+                    name="imagem_base64"
+                    id="inputImagemBase64"
+                  />
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer justify-content-between">
+              <div>
+                {% if user.is_admin %}
+                <button
+                  type="button"
+                  class="btn btn-secondary btn-sm"
+                  onclick="arquivarCard()"
+                  title="Arquivar (Esconder)"
+                >
+                  <i class="fas fa-archive"></i> Arquivar
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-danger btn-sm ms-2"
+                  onclick="excluirCard()"
+                  title="Excluir Permanentemente"
+                >
+                  <i class="fas fa-trash"></i> Excluir
+                </button>
+                {% endif %}
+              </div>
+              <button type="submit" class="btn btn-primary">Salvar</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <script>
+      // DRAG AND DROP
+      document.querySelectorAll(".list-cards").forEach((el) => {
+        new Sortable(el, {
+          group: "kanban",
+          animation: 150,
+          onEnd: function (evt) {
+            fetch("/mover", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                id: evt.item.getAttribute("data-id"),
+                setor_id: evt.to.getAttribute("data-setor-id"),
+              }),
+            });
+          },
+        });
+      });
+
+      var taskModal = new bootstrap.Modal(document.getElementById("taskModal"));
+      var form = document.getElementById("formTask");
+
+      function abrirModalCriar() {
+        form.reset();
+        form.action = "/adicionar";
+        document.getElementById("modalTitle").innerText = "Novo Pedido";
+        document.getElementById("cardId").value = "";
+        document.getElementById("previewImage").style.display = "none";
+        document.getElementById("infoCriador").style.display = "none";
+        taskModal.show();
+      }
+
+      function abrirModalEditar(id) {
+        fetch("/api/card/" + id + "?t=" + new Date().getTime())
+          .then((r) => r.json())
+          .then((data) => {
+            form.action = "/editar";
+            document.getElementById("modalTitle").innerText =
+              "Editando " + data.titulo;
+            document.getElementById("cardId").value = data.id;
+            document.getElementById("cardTitulo").value = data.titulo;
+            document.getElementById("cardCliente").value = data.cliente;
+            document.getElementById("cardDescricao").value = data.descricao;
+            document.getElementById("cardSetor").value = data.setor_id;
+            document.getElementById("cardStatus").value = data.status_id;
+
+            // Mostrar Criador
+            if (data.created_by) {
+              const infoDiv = document.getElementById("infoCriador");
+              infoDiv.innerHTML = `<i class="fas fa-info-circle"></i> Criado por <strong>${data.created_by}</strong> em ${data.created_at}`;
+              infoDiv.style.display = "block";
+            } else {
+              document.getElementById("infoCriador").style.display = "none";
+            }
+
+            let img = document.getElementById("previewImage");
+            if (data.imagem_path) {
+              img.src = "/static/uploads/" + data.imagem_path;
+              img.style.display = "block";
+            } else {
+              img.style.display = "none";
+            }
+            taskModal.show();
+          });
+      }
+
+      function excluirCard() {
+        if (confirm("Excluir PERMANENTEMENTE?"))
+          fetch("/excluir/" + document.getElementById("cardId").value, {
+            method: "POST",
+          }).then((r) => {
+            if (r.ok) location.reload();
+          });
+      }
+
+      // FUNÇÃO ARQUIVAR
+      function arquivarCard() {
+        if (confirm("Deseja arquivar este card? (Ele sumirá do quadro)"))
+          fetch("/arquivar/" + document.getElementById("cardId").value, {
+            method: "POST",
+          }).then((r) => {
+            if (r.ok) location.reload();
+          });
+      }
+
+      document
+        .getElementById("pasteArea")
+        .addEventListener("paste", function (e) {
+          e.preventDefault();
+          if (e.clipboardData.items) {
+            for (let i = 0; i < e.clipboardData.items.length; i++) {
+              if (e.clipboardData.items[i].type.indexOf("image") !== -1) {
+                let blob = e.clipboardData.items[i].getAsFile();
+                let reader = new FileReader();
+                reader.onload = function (event) {
+                  document.getElementById("previewImage").src =
+                    event.target.result;
+                  document.getElementById("previewImage").style.display =
+                    "block";
+                  document.getElementById("inputImagemBase64").value =
+                    event.target.result;
+                };
+                reader.readAsDataURL(blob);
+              }
+            }
+          }
+        });
+
+      // --- AUTO REFRESH & CHAT & SONS ---
+      let versaoLocal = null;
+      let lastChatId = 0;
+      let localLastCardId = 0; // Controle para som de card
+      let mousePressionado = false;
+
+      document.body.onmousedown = () => (mousePressionado = true);
+      document.body.onmouseup = () => (mousePressionado = false);
+
+      const chatOffcanvas = document.getElementById("chatOffcanvas");
+      chatOffcanvas.addEventListener("shown.bs.offcanvas", function () {
+        document
+          .getElementById("btnChatGlobal")
+          .classList.remove("chat-notification");
+      });
+
+      function playSound(type) {
+        // Navegadores bloqueiam som sem interação. O usuário deve ter clicado na pg alguma vez.
+        try {
+          if (type === "msg") document.getElementById("soundMsg").play();
+          if (type === "card") document.getElementById("soundCard").play();
+        } catch (e) {
+          console.log("Som bloqueado pelo navegador", e);
+        }
+      }
+
+      function checkUpdates() {
+        if (mousePressionado) return;
+        fetch("/verificar_atualizacao?t=" + new Date().getTime())
+          .then((r) => r.json())
+          .then((data) => {
+            // Primeira carga
+            if (versaoLocal === null) {
+              versaoLocal = data.timestamp;
+              lastChatId = data.chat_id;
+              localLastCardId = data.last_card_id;
+              carregarChat();
+              return;
+            }
+
+            // SE HOUVER MUDANÇA GLOBAL (Reload na tela)
+            if (data.timestamp > versaoLocal) {
+              // Verifica se foi um card novo antes de recarregar
+              if (data.last_card_id > localLastCardId) {
+                playSound("card");
+              }
+              // Dá um tempinho pro som tocar e recarrega
+              setTimeout(() => location.reload(), 500);
+              return;
+            }
+
+            // NOTIFICAÇÃO DE CHAT (Sem reload, só som e badge)
+            if (data.chat_id > lastChatId) {
+              lastChatId = data.chat_id;
+              carregarChat();
+              playSound("msg");
+
+              if (!chatOffcanvas.classList.contains("show")) {
+                document
+                  .getElementById("btnChatGlobal")
+                  .classList.add("chat-notification");
+              }
+            }
+          })
+          .catch((err) => console.error(err));
+      }
+      setInterval(checkUpdates, 2000);
+
+      function carregarChat() {
+        fetch("/chat/listar?t=" + new Date().getTime())
+          .then((r) => r.json())
+          .then((msgs) => {
+            let html = "";
+            if (msgs.length === 0) {
+              html =
+                '<div class="text-center text-muted small mt-5">Nenhuma mensagem.</div>';
+            } else {
+              msgs.forEach((m) => {
+                let cls = m.eu_mesmo ? "msg-me" : "msg-other";
+                html += `<div class="msg-bubble ${cls}"><div class="msg-user">${m.usuario}</div>${m.texto}<div class="msg-time">${m.hora}</div></div>`;
+              });
+            }
+            let box = document.getElementById("chatBox");
+            box.innerHTML = html;
+            box.scrollTop = box.scrollHeight;
+          });
+      }
+
+      function enviarMensagem(e) {
+        e.preventDefault();
+        let input = document.getElementById("msgInput");
+        let txt = input.value;
+        if (!txt) return;
+        fetch("/chat/enviar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ texto: txt }),
+        }).then(() => {
+          input.value = "";
+          carregarChat();
+        });
+      }
+
+      function limparChat() {
+        if (
+          confirm(
+            "Tem certeza que deseja apagar TODAS as mensagens do chat para todos?"
+          )
+        ) {
+          fetch("/chat/limpar", { method: "POST" })
+            .then((r) => r.json())
+            .then((data) => {
+              if (data.success) {
+                // Força recarregamento visual imediato
+                carregarChat();
+              } else {
+                alert("Erro: " + (data.error || "Desconhecido"));
+              }
+            });
+        }
+      }
+    </script>
+  </body>
+</html>

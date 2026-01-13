@@ -1,0 +1,26 @@
+# Ambientes Virtuais
+venv/
+.venv/
+env/
+
+# Banco de Dados e Logs
+*.db
+*.log
+*.sqlite3
+
+# Arquivos Compilados do Python
+__pycache__/
+*.pyc
+
+# Arquivos de Upload (Não envie fotos reais de clientes)
+static/uploads/*
+!static/uploads/.gitkeep
+
+# Arquivos do PyInstaller (Gerados na criação do executável)
+build/
+dist/
+*.spec
+
+# Extensões e configurações de IDE
+.vscode/
+.idea/
