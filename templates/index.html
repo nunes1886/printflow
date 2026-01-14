@@ -56,36 +56,39 @@
         min-height: 50px;
       }
 
-      /* CARD ESTILO NOVO */
+      /* CARD ESTILO NOVO (COLORIDO) */
       .trello-card {
-        background-color: #fff;
-        border-radius: 4px;
-        box-shadow: 0 1px 2px rgba(9, 30, 66, 0.25);
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
         padding: 10px;
-        margin-bottom: 10px;
-        cursor: pointer;
-        color: #172b4d;
-        border-left-width: 6px;
-        border-left-style: solid;
+        margin-bottom: 12px;
+        cursor: grab;
+        color: #212529;
         white-space: normal;
         position: relative;
-        transition: transform 0.1s;
+        transition: transform 0.1s, box-shadow 0.1s;
+        border: none;
       }
       .trello-card:hover {
-        transform: translateY(-2px);
-        background: #f4f5f7;
+        transform: translateY(-3px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        filter: brightness(0.98);
+      }
+      .trello-card:active {
+        cursor: grabbing;
       }
 
-      .status-badge {
-        font-size: 0.75rem;
-        padding: 3px 8px;
-        border-radius: 10px;
-        color: white;
+      .status-badge-light {
+        font-size: 0.7rem;
+        padding: 2px 8px;
+        border-radius: 12px;
+        background-color: rgba(255, 255, 255, 0.8);
+        color: #333;
         font-weight: bold;
         text-transform: uppercase;
-        margin-bottom: 8px;
+        margin-bottom: 6px;
         display: inline-block;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
       }
 
       /* CHAT STYLES */
@@ -108,7 +111,6 @@
         background: #27ae60;
         transform: scale(1.1);
       }
-
       .chat-notification {
         background-color: #e74c3c !important;
         animation: pulse 1.5s infinite;
@@ -124,7 +126,6 @@
           box-shadow: 0 0 0 0 rgba(231, 76, 60, 0);
         }
       }
-
       .chat-container {
         height: calc(100vh - 160px);
         overflow-y: auto;
@@ -163,6 +164,16 @@
         text-align: right;
         margin-top: 4px;
       }
+
+      /* ESCONDER SCROLLBAR */
+      .board-canvas::-webkit-scrollbar,
+      .list-cards::-webkit-scrollbar {
+        display: none;
+      }
+      .board-canvas,
+      .list-cards {
+        scrollbar-width: none;
+      }
     </style>
   </head>
   <body>
@@ -170,14 +181,26 @@
     <audio id="soundCard" src="/static/sounds/new_card.mp3"></audio>
 
     <div class="navbar-custom">
-      <div class="fw-bold fs-5"><i class="fas fa-print me-2"></i>PrintFlow</div>
+      <a class="navbar-brand fw-bold" href="/" style="font-size: 1.5rem">
+        <i class="fas fa-layer-group text-primary me-2"></i>Print<span
+          style="color: #0dcaf0"
+          >Flow</span
+        >
+      </a>
       {% if user.is_admin %}
-      <div>
+      <div class="d-flex align-items-center">
         <button
           class="btn btn-light text-primary fw-bold btn-sm px-3 shadow-sm"
           onclick="abrirModalCriar()"
         >
           <i class="fas fa-plus me-2"></i>Novo Pedido
+        </button>
+        <button
+          class="btn btn-outline-light btn-sm ms-2"
+          onclick="abrirModalArquivos()"
+          title="Ver Arquivados"
+        >
+          <i class="fas fa-archive"></i>
         </button>
         <a
           href="/configuracoes"
@@ -199,7 +222,7 @@
       {% for setor in setores %}
       <div class="kanban-list">
         <div
-          class="list-header fw-bold text-secondary mb-2 d-flex justify-content-between"
+          class="list-header fw-bold text-secondary mb-2 d-flex justify-content-between align-items-center"
         >
           {{ setor.nome }}
           <span class="badge bg-secondary rounded-pill"
@@ -213,39 +236,47 @@
           data-setor-id="{{ setor.id }}"
         >
           {% for card in setor.cards %} {% if not card.is_archived %}
+
           <div
             class="trello-card"
             data-id="{{ card.id }}"
             onclick="abrirModalEditar('{{ card.id }}')"
-            style="border-left-color: {{ card.status_ref.cor if card.status_ref and card.status_ref.cor else '#ccc' }} !important;"
+            style="background-color: {{ card.status_ref.cor if card.status_ref and card.status_ref.cor else '#fff' }};"
           >
-            <div
-              class="status-badge"
-              style="background-color: {{ card.status_ref.cor if card.status_ref and card.status_ref.cor else '#ccc' }};"
-            >
-              {{ card.status_ref.nome if card.status_ref else 'Sem Status' }}
+            <div class="d-flex justify-content-between align-items-start">
+              <div class="status-badge-light">
+                {{ card.status_ref.nome if card.status_ref else 'Sem Status' }}
+              </div>
+              <i class="fas fa-ellipsis-h small text-dark opacity-50"></i>
             </div>
 
-            <div class="fw-bold">{{ card.titulo }}</div>
-            <div class="small text-muted">{{ card.cliente }}</div>
-
-            {% if card.created_by %}
-            <div
-              class="small text-muted mt-1"
-              style="
-                font-size: 0.75rem;
-                border-top: 1px solid #eee;
-                padding-top: 4px;
-              "
-            >
-              <i class="fas fa-user me-1"></i> {{ card.created_by }}
+            <div class="fw-bold mb-1 text-dark" style="font-size: 1rem">
+              {{ card.titulo }}
             </div>
-            {% endif %} {% if card.imagem_path %}
-            <i
-              class="fas fa-image text-primary small mt-2"
-              title="Ver Print"
-            ></i>
-            {% endif %}
+            <div class="small text-dark fw-semibold mb-2" style="opacity: 0.8">
+              <i class="fas fa-user-tie me-1"></i> {{ card.cliente }}
+            </div>
+
+            <div
+              class="d-flex justify-content-between align-items-end mt-2 pt-2 border-top border-dark border-opacity-10"
+            >
+              <div>
+                {% if card.imagem_path %}
+                <span class="badge bg-light text-primary border border-primary">
+                  <i class="fas fa-image"></i> Print
+                </span>
+                {% endif %}
+              </div>
+
+              {% if card.created_by %}
+              <div
+                class="small text-dark fst-italic"
+                style="font-size: 0.7rem; opacity: 0.8"
+              >
+                Por: {{ card.created_by }}
+              </div>
+              {% endif %}
+            </div>
           </div>
           {% endif %} {% endfor %}
         </div>
@@ -457,6 +488,45 @@
       </div>
     </div>
 
+    <div class="modal fade" id="modalArquivos" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header bg-secondary text-white">
+            <h5 class="modal-title">
+              <i class="fas fa-archive me-2"></i>Pedidos Arquivados
+            </h5>
+            <button
+              type="button"
+              class="btn-close btn-close-white"
+              data-bs-dismiss="modal"
+            ></button>
+          </div>
+          <div class="modal-body p-0">
+            <div id="listaArquivados" class="list-group list-group-flush"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer class="mt-5 py-3 bg-light text-muted text-center border-top">
+      <div class="container" style="font-size: 0.85rem">
+        <div class="row align-items-center">
+          <div class="col-md-6 text-md-start mb-2 mb-md-0">
+            <span
+              ><i class="fas fa-print me-1"></i>
+              <strong>PrintFlow</strong> v1.0</span
+            >
+            <span class="mx-2">|</span>
+            <span>Sistema de Gestão de Produção</span>
+          </div>
+          <div class="col-md-6 text-md-end">
+            Desenvolvido por <strong>Gledson Nunes</strong>
+            <i class="fas fa-code text-primary ms-1"></i>
+          </div>
+        </div>
+      </div>
+    </footer>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <script>
@@ -479,6 +549,9 @@
       });
 
       var taskModal = new bootstrap.Modal(document.getElementById("taskModal"));
+      var arquivosModal = new bootstrap.Modal(
+        document.getElementById("modalArquivos")
+      );
       var form = document.getElementById("formTask");
 
       function abrirModalCriar() {
@@ -505,7 +578,6 @@
             document.getElementById("cardSetor").value = data.setor_id;
             document.getElementById("cardStatus").value = data.status_id;
 
-            // Mostrar Criador
             if (data.created_by) {
               const infoDiv = document.getElementById("infoCriador");
               infoDiv.innerHTML = `<i class="fas fa-info-circle"></i> Criado por <strong>${data.created_by}</strong> em ${data.created_at}`;
@@ -525,6 +597,52 @@
           });
       }
 
+      // --- FUNÇÕES DE ARQUIVO ---
+      function abrirModalArquivos() {
+        let lista = document.getElementById("listaArquivados");
+        lista.innerHTML =
+          '<div class="p-3 text-center text-muted">Carregando...</div>';
+        arquivosModal.show();
+
+        fetch("/api/arquivados")
+          .then((r) => r.json())
+          .then((data) => {
+            lista.innerHTML = "";
+            if (data.length === 0) {
+              lista.innerHTML =
+                '<div class="p-3 text-center text-muted">Nenhum pedido arquivado.</div>';
+              return;
+            }
+            data.forEach((item) => {
+              lista.innerHTML += `
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>${item.titulo}</strong> <br>
+                                <small class="text-muted">${item.cliente} - ${item.data}</small>
+                            </div>
+                            <button class="btn btn-sm btn-outline-primary" onclick="desarquivarCard(${item.id})">
+                                <i class="fas fa-undo"></i> Restaurar
+                            </button>
+                        </div>
+                    `;
+            });
+          });
+      }
+
+      function desarquivarCard(id) {
+        if (!confirm("Restaurar este pedido para o quadro?")) return;
+        fetch("/desarquivar/" + id, { method: "POST" })
+          .then((r) => r.json())
+          .then((data) => {
+            if (data.success) {
+              arquivosModal.hide();
+              location.reload();
+            } else {
+              alert("Erro ao restaurar");
+            }
+          });
+      }
+
       function excluirCard() {
         if (confirm("Excluir PERMANENTEMENTE?"))
           fetch("/excluir/" + document.getElementById("cardId").value, {
@@ -534,7 +652,6 @@
           });
       }
 
-      // FUNÇÃO ARQUIVAR
       function arquivarCard() {
         if (confirm("Deseja arquivar este card? (Ele sumirá do quadro)"))
           fetch("/arquivar/" + document.getElementById("cardId").value, {
@@ -570,7 +687,7 @@
       // --- AUTO REFRESH & CHAT & SONS ---
       let versaoLocal = null;
       let lastChatId = 0;
-      let localLastCardId = 0; // Controle para som de card
+      let localLastCardId = 0;
       let mousePressionado = false;
 
       document.body.onmousedown = () => (mousePressionado = true);
@@ -584,7 +701,6 @@
       });
 
       function playSound(type) {
-        // Navegadores bloqueiam som sem interação. O usuário deve ter clicado na pg alguma vez.
         try {
           if (type === "msg") document.getElementById("soundMsg").play();
           if (type === "card") document.getElementById("soundCard").play();
@@ -598,7 +714,6 @@
         fetch("/verificar_atualizacao?t=" + new Date().getTime())
           .then((r) => r.json())
           .then((data) => {
-            // Primeira carga
             if (versaoLocal === null) {
               versaoLocal = data.timestamp;
               lastChatId = data.chat_id;
@@ -606,24 +721,17 @@
               carregarChat();
               return;
             }
-
-            // SE HOUVER MUDANÇA GLOBAL (Reload na tela)
             if (data.timestamp > versaoLocal) {
-              // Verifica se foi um card novo antes de recarregar
               if (data.last_card_id > localLastCardId) {
                 playSound("card");
               }
-              // Dá um tempinho pro som tocar e recarrega
               setTimeout(() => location.reload(), 500);
               return;
             }
-
-            // NOTIFICAÇÃO DE CHAT (Sem reload, só som e badge)
             if (data.chat_id > lastChatId) {
               lastChatId = data.chat_id;
               carregarChat();
               playSound("msg");
-
               if (!chatOffcanvas.classList.contains("show")) {
                 document
                   .getElementById("btnChatGlobal")
@@ -671,16 +779,11 @@
       }
 
       function limparChat() {
-        if (
-          confirm(
-            "Tem certeza que deseja apagar TODAS as mensagens do chat para todos?"
-          )
-        ) {
+        if (confirm("Tem certeza que deseja apagar TODAS as mensagens?")) {
           fetch("/chat/limpar", { method: "POST" })
             .then((r) => r.json())
             .then((data) => {
               if (data.success) {
-                // Força recarregamento visual imediato
                 carregarChat();
               } else {
                 alert("Erro: " + (data.error || "Desconhecido"));

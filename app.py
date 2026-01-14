@@ -365,6 +365,38 @@ def limpar_chat():
         return jsonify({'success': True})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    
+# --- NOVAS ROTAS PARA ARQUIVADOS ---
+
+@app.route('/api/arquivados')
+@login_required
+def api_arquivados():
+    # Busca os ultimos 50 cards arquivados
+    cards = Card.query.filter_by(is_archived=True).order_by(Card.id.desc()).limit(50).all()
+    lista = []
+    for c in cards:
+        lista.append({
+            'id': c.id,
+            'titulo': c.titulo,
+            'cliente': c.cliente,
+            'data': c.data_criacao,
+            'criado_por': c.created_by
+        })
+    return jsonify(lista)
+
+@app.route('/desarquivar/<int:card_id>', methods=['POST'])
+@login_required
+def desarquivar_card(card_id):
+    if current_user.funcao != 'admin':
+        return jsonify({'error': 'Apenas admin pode restaurar'}), 403
+    
+    card = Card.query.get(card_id)
+    if card:
+        card.is_archived = False
+        db.session.commit()
+        atualizar_versao() # Atualiza a tela de todo mundo
+        return jsonify({'success': True})
+    return jsonify({'error': 'Card não encontrado'}), 404
 
 if __name__ == '__main__':
     # Cria o banco se não existir
