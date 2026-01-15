@@ -23,6 +23,7 @@
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         padding: 20px;
         margin-bottom: 20px;
+        height: 100%; /* Para alinhar altura dos cards */
       }
       .color-dot {
         width: 20px;
@@ -44,7 +45,7 @@
       >
     </nav>
 
-    <div class="container">
+    <div class="container pb-5">
       {% with messages = get_flashed_messages() %} {% if messages %} {% for
       message in messages %}
       <div class="alert alert-warning alert-dismissible fade show" role="alert">
@@ -61,11 +62,11 @@
         <i class="fas fa-cogs me-2"></i>Configurações do Sistema
       </h2>
 
-      <div class="row">
+      <div class="row mb-4">
         <div class="col-md-6">
           <div class="config-card">
             <h5 class="fw-bold mb-3 border-bottom pb-2">
-              📂 Setores (Colunas do Quadro)
+              📂 Setores (Colunas)
             </h5>
 
             <table class="table table-hover align-middle">
@@ -127,7 +128,7 @@
         <div class="col-md-6">
           <div class="config-card">
             <h5 class="fw-bold mb-3 border-bottom pb-2">
-              🏷️ Status (Etiquetas Coloridas)
+              🏷️ Status (Etiquetas)
             </h5>
 
             <table class="table table-hover align-middle">
@@ -137,7 +138,7 @@
                   <td>
                     <span
                       class="color-dot me-2"
-                      style="background-color: '{{ status.cor }}';"
+                      style="background-color: {{ status.cor }};"
                     ></span>
                     {{ status.nome }}
                   </td>
@@ -196,13 +197,120 @@
         </div>
       </div>
 
-      <div class="text-center mt-3">
-        <a href="/usuarios" class="btn btn-outline-primary">
-          <i class="fas fa-users-cog me-2"></i>Gerenciar Colaboradores (Equipe)
-        </a>
+      <hr class="my-5 text-muted">
+
+      <h4 class="mb-3 fw-bold text-secondary">
+          <i class="fas fa-tools me-2"></i>Manutenção e Sistema
+      </h4>
+      
+      <div class="row">
+          <div class="col-md-6">
+              <div class="config-card">
+                  <h5 class="card-title fw-bold text-primary mb-3">
+                      <i class="fas fa-hdd me-2"></i>Armazenamento de Imagens
+                  </h5>
+                  
+                  <div class="d-flex justify-content-between align-items-end mb-2">
+                      <span class="text-muted">Espaço usado:</span>
+                      <span class="fs-4 fw-bold">{{ size_mb }} MB</span>
+                  </div>
+                  <div class="progress mb-3" style="height: 10px;">
+                      <div class="progress-bar bg-warning" role="progressbar" style="width: {{ (size_mb / 1024) * 100 }}%"></div>
+                  </div>
+                  <p class="small text-muted mb-4">Total de arquivos: {{ total_files }} imagens salvas.</p>
+
+                  <div class="bg-light p-3 rounded border border-danger border-opacity-25">
+                      <label class="form-label fw-bold small text-danger">Limpeza Automática</label>
+                      <div class="input-group mb-3">
+                          <span class="input-group-text">Apagar imagens de ARQUIVADOS há mais de</span>
+                          <input type="number" id="diasInput" class="form-control" value="60" min="10">
+                          <span class="input-group-text">dias</span>
+                      </div>
+                      
+                      <button class="btn btn-danger w-100" onclick="executarLimpeza()">
+                          <i class="fas fa-trash-alt me-2"></i>Executar Limpeza
+                      </button>
+                      <small class="text-muted d-block mt-2 text-center" style="font-size: 0.75rem;">
+                          Isso apaga apenas as fotos. O histórico e texto dos pedidos permanecem.
+                      </small>
+                  </div>
+              </div>
+          </div>
+
+          <div class="col-md-6">
+              <div class="config-card">
+                  <h5 class="card-title fw-bold text-dark mb-3">
+                      <i class="fas fa-info-circle me-2"></i>Sobre o PrintFlow
+                  </h5>
+                  <ul class="list-group list-group-flush">
+                      <li class="list-group-item d-flex justify-content-between px-0">
+                          <span>Versão do Sistema</span>
+                          <strong>1.1.0 (Enterprise)</strong>
+                      </li>
+                      <li class="list-group-item d-flex justify-content-between px-0">
+                          <span>Banco de Dados</span>
+                          <strong>SQLite Local</strong>
+                      </li>
+                      <li class="list-group-item d-flex justify-content-between px-0">
+                          <span>Admin Logado</span>
+                          <strong>{{ user.username }}</strong>
+                      </li>
+                  </ul>
+                  
+                  <div class="mt-4 text-center">
+                    <a href="/usuarios" class="btn btn-outline-primary w-100 mb-2">
+                        <i class="fas fa-users-cog me-2"></i>Gerenciar Colaboradores
+                    </a>
+                    <p class="text-muted small mt-2">
+                        Para backup, copie o arquivo <code>printflow.db</code> e a pasta <code>static/uploads</code>.
+                    </p>
+                  </div>
+              </div>
+          </div>
       </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function executarLimpeza() {
+            const dias = document.getElementById('diasInput').value;
+            if (dias < 10) {
+                alert('Por segurança, o mínimo é 10 dias.');
+                return;
+            }
+
+            if(!confirm(`ATENÇÃO: Isso apagará PERMANENTEMENTE as imagens dos pedidos ARQUIVADOS (finalizados) há mais de ${dias} dias.\n\nOs textos dos pedidos serão mantidos.\n\nDeseja continuar?`)) {
+                return;
+            }
+
+            // Mostra loading visual no botão
+            const btn = document.querySelector('button.btn-danger');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Limpando...';
+            btn.disabled = true;
+
+            fetch('/api/limpar_imagens', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ dias: dias })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if(data.success) {
+                    alert(`Limpeza Concluída com Sucesso!\n\nImagens apagadas: ${data.qtd}\nEspaço liberado: ${data.mb} MB`);
+                    location.reload(); // Recarrega para atualizar a barra de espaço
+                } else {
+                    alert('Erro ao limpar: ' + (data.error || 'Desconhecido'));
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }
+            })
+            .catch(err => {
+                alert('Erro de conexão com o servidor.');
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            });
+        }
+    </script>
   </body>
 </html>

@@ -2,7 +2,7 @@ import os
 import time
 import base64
 import uuid 
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, url_for, jsonify, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
@@ -15,6 +15,8 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'chave-super-secreta-printflow'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'printflow.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
 
 db = SQLAlchemy(app)
 login_manager = LoginManager()
@@ -315,9 +317,34 @@ def excluir(id):
 @app.route('/configuracoes')
 @login_required
 def configuracoes():
-    if not current_user.is_admin: return redirect(url_for('index'))
-    return render_template('configuracoes.html', setores=Setor.query.order_by(Setor.ordem).all(), 
-                           lista_status=Status.query.all(), user=current_user)
+    if current_user.funcao != 'admin':
+        return redirect(url_for('index'))
+    
+    # 1. Carrega dados existentes (Setores e Status)
+    setores = Setor.query.order_by(Setor.ordem).all()
+    lista_status = Status.query.all()
+    
+    # 2. Calcula dados novos (Armazenamento)
+    upload_folder = os.path.join(app.root_path, 'static', 'uploads')
+    total_size = 0
+    total_files = 0
+    
+    if os.path.exists(upload_folder):
+        for path, dirs, files in os.walk(upload_folder):
+            for f in files:
+                fp = os.path.join(path, f)
+                total_size += os.path.getsize(fp)
+                total_files += 1
+    
+    size_mb = round(total_size / (1024 * 1024), 2)
+    
+    # 3. Envia TUDO para o HTML
+    return render_template('configuracoes.html', 
+                         setores=setores, 
+                         lista_status=lista_status,
+                         size_mb=size_mb, 
+                         total_files=total_files,
+                         user=current_user)
 
 @app.route('/setor/adicionar', methods=['POST'])
 @login_required
@@ -397,6 +424,54 @@ def desarquivar_card(card_id):
         atualizar_versao() # Atualiza a tela de todo mundo
         return jsonify({'success': True})
     return jsonify({'error': 'Card não encontrado'}), 404
+
+# --- ROTA DE LIMPEZA DE IMAGENS (ESTAVA FALTANDO) ---
+@app.route('/api/limpar_imagens', methods=['POST'])
+@login_required
+def limpar_imagens():
+    if current_user.funcao != 'admin':
+        return jsonify({'error': 'Não autorizado'}), 403
+        
+    dias = int(request.json.get('dias', 60)) # Padrão 60 dias
+    
+    # Data limite: Hoje menos X dias
+    data_limite_obj = datetime.now() - timedelta(days=dias)
+    
+    cards_arquivados = Card.query.filter_by(is_archived=True).all()
+    
+    imagens_apagadas = 0
+    espaco_liberado = 0
+    
+    upload_folder = os.path.join(app.root_path, 'static', 'uploads')
+    
+    for card in cards_arquivados:
+        try:
+            # Verifica se o card tem imagem
+            if card.imagem_path:
+                caminho_arquivo = os.path.join(upload_folder, card.imagem_path)
+                
+                # Se o arquivo existe no disco
+                if os.path.exists(caminho_arquivo):
+                    # Verifica a data de modificação do ARQUIVO FÍSICO
+                    timestamp_arquivo = os.path.getmtime(caminho_arquivo)
+                    data_arquivo = datetime.fromtimestamp(timestamp_arquivo)
+                    
+                    # Se o arquivo for mais velho que a data limite
+                    if data_arquivo < data_limite_obj:
+                        tamanho = os.path.getsize(caminho_arquivo)
+                        os.remove(caminho_arquivo) # Deleta o arquivo
+                        
+                        card.imagem_path = None # Remove referência do banco (opcional, ou mantém como histórico que teve imagem)
+                        imagens_apagadas += 1
+                        espaco_liberado += tamanho
+        except Exception as e:
+            print(f"Erro ao limpar card {card.id}: {e}")
+            continue
+
+    db.session.commit()
+    
+    mb_liberados = round(espaco_liberado / (1024 * 1024), 2)
+    return jsonify({'success': True, 'qtd': imagens_apagadas, 'mb': mb_liberados})
 
 if __name__ == '__main__':
     # Cria o banco se não existir
