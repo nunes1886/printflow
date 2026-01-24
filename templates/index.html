@@ -1,8 +1,11 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-br">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
     <title>PrintFlow - Gestão</title>
     <link
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
@@ -13,14 +16,19 @@
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
     />
     <style>
+      /* --- ESTILOS GERAIS --- */
       body {
         background-color: #0079bf;
         font-family: "Segoe UI", sans-serif;
-        height: 100vh;
+        /* ALTERAÇÃO 1: Mudei de height fixo para min-height e liberei o scroll */
+        min-height: 100vh;
         display: flex;
         flex-direction: column;
-        overflow: hidden;
+        overflow-y: auto; /* Libera o scroll vertical da página */
+        overflow-x: hidden; /* Evita scroll lateral desnecessário na página inteira */
       }
+
+      /* --- NAVBAR RESPONSIVA --- */
       .navbar-custom {
         background-color: rgba(0, 0, 0, 0.2);
         padding: 8px 16px;
@@ -29,34 +37,75 @@
         align-items: center;
         justify-content: space-between;
         backdrop-filter: blur(5px);
+        flex-wrap: nowrap;
+        position: sticky; /* Mantém o menu no topo ao rolar */
+        top: 0;
+        z-index: 1000;
       }
+
+      @media (max-width: 768px) {
+        .navbar-brand {
+          font-size: 1.2rem !important;
+        }
+        .navbar-custom {
+          padding: 8px 10px;
+        }
+        .user-info-text {
+          display: none;
+        }
+      }
+
+      /* --- KANBAN BOARD (Área dos Cards) --- */
       .board-canvas {
         flex-grow: 1;
-        padding: 20px;
+        padding: 10px;
+        /* ALTERAÇÃO 2: Permite que essa área cresça e não esconda o scroll */
         overflow-x: auto;
+        overflow-y: visible;
         white-space: nowrap;
         display: flex;
         align-items: flex-start;
-        gap: 20px;
+        gap: 15px;
+        scroll-snap-type: x mandatory;
+        -webkit-overflow-scrolling: touch;
+        margin-bottom: 20px; /* Espaço para não colar no rodapé */
       }
+
       .kanban-list {
         background-color: #ebecf0;
-        width: 320px;
-        min-width: 320px;
+        width: 300px;
+        min-width: 300px;
         border-radius: 6px;
         padding: 10px;
         display: flex;
         flex-direction: column;
-        max-height: calc(100vh - 80px);
+        /* Mantém o scroll interno dos cards, mas limitado à altura da tela */
+        max-height: calc(100vh - 100px);
+        scroll-snap-align: start;
       }
+
+      @media (max-width: 576px) {
+        .kanban-list {
+          width: 85vw;
+          min-width: 85vw;
+          /* No mobile, reduz um pouco a altura máxima da lista para caber na tela */
+          max-height: 80vh;
+        }
+        .board-canvas {
+          padding: 10px 15px;
+          gap: 10px;
+        }
+      }
+
       .list-cards {
         flex-grow: 1;
         overflow-y: auto;
         padding: 4px;
         min-height: 50px;
+        scrollbar-width: thin;
       }
 
-      /* CARD ESTILO NOVO (COLORIDO) */
+      /* CARD ESTILO NOVO */
       .trello-card {
         border-radius: 8px;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
@@ -66,16 +115,34 @@
         color: #212529;
         white-space: normal;
         position: relative;
-        transition: transform 0.1s, box-shadow 0.1s;
-        border: none;
+        transition:
+          transform 0.1s,
+          box-shadow 0.1s;
+        border-left: 5px solid transparent;
+        touch-action: pan-y;
       }
-      .trello-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-        filter: brightness(0.98);
+
+      .trello-card.sortable-drag {
+        opacity: 0.9;
+        transform: scale(1.05);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
       }
+
       .trello-card:active {
         cursor: grabbing;
+      }
+
+      /* CORES DO SEMÁFORO */
+      .prazo-hoje {
+        border-left-color: #dc3545 !important;
+        background: #fff5f5 !important;
+      }
+      .prazo-amanha {
+        border-left-color: #ffc107 !important;
+        background: #fffbf0 !important;
+      }
+      .prazo-ok {
+        border-left-color: #198754 !important;
       }
 
       .status-badge-light {
@@ -107,10 +174,16 @@
         z-index: 1000;
         transition: all 0.3s;
       }
-      .chat-btn:hover {
-        background: #27ae60;
-        transform: scale(1.1);
+      @media (max-width: 576px) {
+        .chat-btn {
+          width: 50px;
+          height: 50px;
+          font-size: 20px;
+          bottom: 15px;
+          right: 15px;
+        }
       }
+
       .chat-notification {
         background-color: #e74c3c !important;
         animation: pulse 1.5s infinite;
@@ -165,14 +238,48 @@
         margin-top: 4px;
       }
 
-      /* ESCONDER SCROLLBAR */
-      .board-canvas::-webkit-scrollbar,
-      .list-cards::-webkit-scrollbar {
-        display: none;
+      /* SCROLLBAR MODERNA */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
       }
-      .board-canvas,
-      .list-cards {
-        scrollbar-width: none;
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background-color: transparent;
+        border-radius: 10px;
+        border: 2px solid transparent;
+        background-clip: content-box;
+      }
+      .board-canvas:hover::-webkit-scrollbar-thumb,
+      .list-cards:hover::-webkit-scrollbar-thumb,
+      body:hover::-webkit-scrollbar-thumb {
+        background-color: rgba(0, 0, 0, 0.2);
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background-color: rgba(0, 0, 0, 0.5) !important;
+      }
+
+      .btn-zap-card {
+        background-color: #25d366;
+        color: white;
+        border-radius: 50%;
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: none;
+        transition: transform 0.2s;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        margin-left: 8px;
+        font-size: 0.8rem;
+      }
+      .btn-zap-card:hover {
+        transform: scale(1.15);
+        background-color: #128c7e;
+        color: white;
       }
     </style>
   </head>
@@ -187,16 +294,37 @@
           >Flow</span
         >
       </a>
-      {% if user.is_admin %}
-      <div class="d-flex align-items-center">
+
+      <div class="flex-grow-1 mx-2 mx-md-4 d-none d-sm-block">
+        <div class="input-group" style="max-width: 400px; margin: 0 auto">
+          <span
+            class="input-group-text bg-white border-0 rounded-start"
+            style="opacity: 0.9"
+          >
+            <i class="fas fa-search text-muted"></i>
+          </span>
+          <input
+            type="text"
+            id="searchInput"
+            class="form-control border-0 rounded-end"
+            placeholder="Buscar..."
+            onkeyup="filtrarCards()"
+            style="opacity: 0.9; box-shadow: none"
+          />
+        </div>
+      </div>
+
+      <div class="d-flex align-items-center gap-2">
+        {% if user.is_admin %}
         <button
           class="btn btn-light text-primary fw-bold btn-sm px-3 shadow-sm"
           onclick="abrirModalCriar()"
         >
-          <i class="fas fa-plus me-2"></i>Novo Pedido
+          <i class="fas fa-plus"></i>
+          <span class="d-none d-md-inline ms-1">Novo</span>
         </button>
         <button
-          class="btn btn-outline-light btn-sm ms-2"
+          class="btn btn-outline-light btn-sm"
           onclick="abrirModalArquivos()"
           title="Ver Arquivados"
         >
@@ -204,18 +332,32 @@
         </button>
         <a
           href="/configuracoes"
-          class="btn btn-light text-secondary fw-bold btn-sm px-3 shadow-sm ms-2"
+          class="btn btn-light text-secondary fw-bold btn-sm px-3 shadow-sm"
         >
           <i class="fas fa-cog"></i>
         </a>
+        {% endif %}
+        <div
+          class="small d-flex align-items-center gap-2 border-start ps-3 ms-2 border-white border-opacity-25"
+        >
+          <span class="user-info-text"
+            ><i class="fas fa-user-circle me-1"></i>{{ user.username }}</span
+          >
+          <a href="/logout" class="btn btn-sm btn-danger py-0" title="Sair"
+            ><i class="fas fa-sign-out-alt"></i
+          ></a>
+        </div>
       </div>
-      {% endif %}
-      <div class="small d-flex align-items-center gap-3">
-        <span><i class="fas fa-user-circle me-1"></i>{{ user.username }}</span>
-        <a href="/logout" class="btn btn-sm btn-danger py-0"
-          ><i class="fas fa-sign-out-alt"></i
-        ></a>
-      </div>
+    </div>
+
+    <div class="d-block d-sm-none p-2 bg-light border-bottom">
+      <input
+        type="text"
+        id="searchInputMobile"
+        class="form-control form-control-sm"
+        placeholder="🔍 Buscar pedido..."
+        onkeyup="filtrarCardsMobile()"
+      />
     </div>
 
     <div class="board-canvas">
@@ -240,6 +382,7 @@
           <div
             class="trello-card"
             data-id="{{ card.id }}"
+            data-prazo="{{ card.prazo }}"
             onclick="abrirModalEditar('{{ card.id }}')"
             style="background-color: {{ card.status_ref.cor if card.status_ref and card.status_ref.cor else '#fff' }};"
           >
@@ -253,21 +396,45 @@
             <div class="fw-bold mb-1 text-dark" style="font-size: 1rem">
               {{ card.titulo }}
             </div>
+
             <div class="small text-dark fw-semibold mb-2" style="opacity: 0.8">
-              <i class="fas fa-user-tie me-1"></i> {{ card.cliente }}
+              <i class="fas fa-user-tie me-1"></i>
+              <span class="cliente-texto">{{ card.cliente }}</span>
+            </div>
+
+            {% if card.prazo %}
+            <div
+              class="small mb-2 fw-bold badge-prazo-display"
+              style="color: #555"
+            >
+              <i class="far fa-calendar-alt me-1"></i>
+              <span class="data-formatada">{{ card.prazo }}</span>
+            </div>
+            {% endif %}
+
+            <div style="display: none" class="search-desc">
+              {{ card.descricao }}
             </div>
 
             <div
               class="d-flex justify-content-between align-items-end mt-2 pt-2 border-top border-dark border-opacity-10"
             >
-              <div>
+              <div class="d-flex align-items-center">
                 {% if card.imagem_path %}
-                <span class="badge bg-light text-primary border border-primary">
-                  <i class="fas fa-image"></i> Print
-                </span>
+                <span class="badge bg-light text-primary border border-primary"
+                  ><i class="fas fa-image"></i> Print</span
+                >
+                {% endif %} {% if user.is_admin %}
+                <button
+                  class="btn-zap-card"
+                  style="display: none"
+                  onclick="event.stopPropagation(); abrirWhatsApp(this, '{{ card.cliente }}', '{{ card.titulo }}')"
+                  title="Chamar no WhatsApp"
+                >
+                  <i class="fab fa-whatsapp"></i>
+                </button>
                 {% endif %}
               </div>
-
               {% if card.created_by %}
               <div
                 class="small text-dark fst-italic"
@@ -305,7 +472,7 @@
             type="button"
             class="btn btn-sm btn-outline-light"
             onclick="limparChat()"
-            title="Limpar Histórico"
+            title="Limpar"
           >
             <i class="fas fa-trash"></i>
           </button>
@@ -342,7 +509,7 @@
     </div>
 
     <div class="modal fade" id="taskModal" tabindex="-1">
-      <div class="modal-dialog modal-lg">
+      <div class="modal-dialog modal-lg modal-fullscreen-md-down">
         <div class="modal-content">
           <form id="formTask" action="/adicionar" method="POST">
             <div class="modal-header bg-light">
@@ -378,20 +545,47 @@
                     endif
                     %}
                   />
-                  <label class="small fw-bold text-muted">Cliente</label>
-                  <input
-                    type="text"
-                    name="cliente"
-                    id="cardCliente"
-                    class="form-control mb-3"
-                    {%
-                    if
-                    not
-                    user.is_admin
-                    %}readonly{%
-                    endif
-                    %}
-                  />
+
+                  <div class="row">
+                    <div class="col-8">
+                      <label class="small fw-bold text-muted"
+                        >Cliente (Nome + Tel)</label
+                      >
+                      <input
+                        type="text"
+                        name="cliente"
+                        id="cardCliente"
+                        class="form-control mb-3"
+                        placeholder="Ex: João 79999998888"
+                        {%
+                        if
+                        not
+                        user.is_admin
+                        %}readonly{%
+                        endif
+                        %}
+                      />
+                    </div>
+                    <div class="col-4">
+                      <label class="small fw-bold text-muted text-danger"
+                        >Prazo Entrega</label
+                      >
+                      <input
+                        type="date"
+                        name="prazo"
+                        id="cardPrazo"
+                        class="form-control mb-3"
+                        {%
+                        if
+                        not
+                        user.is_admin
+                        %}readonly{%
+                        endif
+                        %}
+                      />
+                    </div>
+                  </div>
+
                   <label class="small fw-bold text-muted">Descrição</label>
                   <textarea
                     name="descricao"
@@ -426,12 +620,7 @@
                       class="form-select"
                     >
                       {% for st in lista_status %}
-                      <option
-                        value="{{ st.id }}"
-                        style="color:'{{st.cor}}'; font-weight:bold"
-                      >
-                        {{ st.nome }}
-                      </option>
+                      <option value="{{ st.id }}">{{ st.nome }}</option>
                       {% endfor %}
                     </select>
                   </div>
@@ -441,8 +630,13 @@
                     contenteditable="true"
                   >
                     <small class="text-muted"
-                      >Clique e Ctrl+V para colar Print</small
+                      >Clique e Ctrl+V para colar Print (PC)</small
                     >
+                    <div class="d-block d-md-none mt-2">
+                      <small class="text-info"
+                        >No celular, use o botão de upload abaixo</small
+                      >
+                    </div>
                   </div>
                   <img
                     id="previewImage"
@@ -467,7 +661,7 @@
                   type="button"
                   class="btn btn-secondary btn-sm"
                   onclick="arquivarCard()"
-                  title="Arquivar (Esconder)"
+                  title="Arquivar"
                 >
                   <i class="fas fa-archive"></i> Arquivar
                 </button>
@@ -475,7 +669,7 @@
                   type="button"
                   class="btn btn-danger btn-sm ms-2"
                   onclick="excluirCard()"
-                  title="Excluir Permanentemente"
+                  title="Excluir"
                 >
                   <i class="fas fa-trash"></i> Excluir
                 </button>
@@ -489,11 +683,11 @@
     </div>
 
     <div class="modal fade" id="modalArquivos" tabindex="-1">
-      <div class="modal-dialog">
+      <div class="modal-dialog modal-fullscreen-md-down">
         <div class="modal-content">
           <div class="modal-header bg-secondary text-white">
             <h5 class="modal-title">
-              <i class="fas fa-archive me-2"></i>Pedidos Arquivados
+              <i class="fas fa-archive me-2"></i>Arquivados
             </h5>
             <button
               type="button"
@@ -514,10 +708,10 @@
           <div class="col-md-6 text-md-start mb-2 mb-md-0">
             <span
               ><i class="fas fa-print me-1"></i>
-              <strong>PrintFlow</strong> v1.0</span
+              <strong>PrintFlow</strong> v2.3</span
             >
             <span class="mx-2">|</span>
-            <span>Sistema de Gestão de Produção</span>
+            <span>Sistema de Gestão</span>
           </div>
           <div class="col-md-6 text-md-end">
             Desenvolvido por <strong>Gledson Nunes</strong>
@@ -530,11 +724,13 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <script>
-      // DRAG AND DROP
       document.querySelectorAll(".list-cards").forEach((el) => {
         new Sortable(el, {
           group: "kanban",
           animation: 150,
+          delay: 150,
+          delayOnTouchOnly: true,
+          touchStartThreshold: 3,
           onEnd: function (evt) {
             fetch("/mover", {
               method: "POST",
@@ -548,9 +744,46 @@
         });
       });
 
+      document.addEventListener("DOMContentLoaded", function () {
+        verificarTelefonesCards();
+        aplicarSemaforo();
+      });
+
+      function aplicarSemaforo() {
+        const hoje = new Date();
+        hoje.setHours(0, 0, 0, 0);
+        document.querySelectorAll(".trello-card").forEach((card) => {
+          const prazoStr = card.getAttribute("data-prazo");
+          if (!prazoStr || prazoStr === "None") return;
+          const partes = prazoStr.split("-");
+          const prazo = new Date(partes[0], partes[1] - 1, partes[2]);
+          prazo.setHours(0, 0, 0, 0);
+          const spanData = card.querySelector(".data-formatada");
+          if (spanData) spanData.innerText = partes[2] + "/" + partes[1];
+          const diffTime = prazo - hoje;
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          card.classList.remove("prazo-hoje", "prazo-amanha", "prazo-ok");
+          if (diffDays < 0) {
+            card.classList.add("prazo-hoje");
+            if (spanData)
+              spanData.innerHTML +=
+                ' <span class="badge bg-danger">ATRASADO</span>';
+          } else if (diffDays === 0) {
+            card.classList.add("prazo-hoje");
+            if (spanData)
+              spanData.innerHTML +=
+                ' <span class="badge bg-danger">HOJE</span>';
+          } else if (diffDays === 1) {
+            card.classList.add("prazo-amanha");
+          } else {
+            card.classList.add("prazo-ok");
+          }
+        });
+      }
+
       var taskModal = new bootstrap.Modal(document.getElementById("taskModal"));
       var arquivosModal = new bootstrap.Modal(
-        document.getElementById("modalArquivos")
+        document.getElementById("modalArquivos"),
       );
       var form = document.getElementById("formTask");
 
@@ -577,15 +810,14 @@
             document.getElementById("cardDescricao").value = data.descricao;
             document.getElementById("cardSetor").value = data.setor_id;
             document.getElementById("cardStatus").value = data.status_id;
-
+            document.getElementById("cardPrazo").value = data.prazo || "";
             if (data.created_by) {
               const infoDiv = document.getElementById("infoCriador");
-              infoDiv.innerHTML = `<i class="fas fa-info-circle"></i> Criado por <strong>${data.created_by}</strong> em ${data.created_at}`;
+              infoDiv.innerHTML = `<i class="fas fa-info-circle"></i> Criado por <strong>${data.created_by}</strong>`;
               infoDiv.style.display = "block";
             } else {
               document.getElementById("infoCriador").style.display = "none";
             }
-
             let img = document.getElementById("previewImage");
             if (data.imagem_path) {
               img.src = "/static/uploads/" + data.imagem_path;
@@ -597,52 +829,90 @@
           });
       }
 
-      // --- FUNÇÕES DE ARQUIVO ---
+      function verificarTelefonesCards() {
+        let cards = document.querySelectorAll(".trello-card");
+        cards.forEach((card) => {
+          let clienteEl = card.querySelector(".cliente-texto");
+          if (clienteEl) {
+            let texto = clienteEl.innerText;
+            let numeros = texto.replace(/\D/g, "");
+            if (numeros.length >= 10) {
+              let btnZap = card.querySelector(".btn-zap-card");
+              if (btnZap) btnZap.style.display = "flex";
+            }
+          }
+        });
+      }
+
+      function abrirWhatsApp(btn, clienteStr, titulo) {
+        let nums = clienteStr.replace(/\D/g, "");
+        if (nums.length <= 11) nums = "55" + nums;
+        let link = `https://wa.me/${nums}?text=${encodeURIComponent(`Olá! Pedido: *${titulo}*.`)}`;
+        window.open(link, "_blank");
+      }
+
+      function filtrarCards() {
+        let termo = document.getElementById("searchInput").value.toLowerCase();
+        let cards = document.querySelectorAll(".trello-card");
+        cards.forEach((card) => {
+          let textoCard = card.innerText.toLowerCase();
+          let desc = card.querySelector(".search-desc");
+          if (desc) textoCard += " " + desc.innerText.toLowerCase();
+          if (textoCard.includes(termo)) {
+            card.style.display = "block";
+          } else {
+            card.style.display = "none";
+          }
+        });
+      }
+      function filtrarCardsMobile() {
+        let termo = document
+          .getElementById("searchInputMobile")
+          .value.toLowerCase();
+        let cards = document.querySelectorAll(".trello-card");
+        cards.forEach((card) => {
+          let textoCard = card.innerText.toLowerCase();
+          let desc = card.querySelector(".search-desc");
+          if (desc) textoCard += " " + desc.innerText.toLowerCase();
+          if (textoCard.includes(termo)) {
+            card.style.display = "block";
+          } else {
+            card.style.display = "none";
+          }
+        });
+      }
+
       function abrirModalArquivos() {
         let lista = document.getElementById("listaArquivados");
         lista.innerHTML =
           '<div class="p-3 text-center text-muted">Carregando...</div>';
         arquivosModal.show();
-
         fetch("/api/arquivados")
           .then((r) => r.json())
           .then((data) => {
             lista.innerHTML = "";
             if (data.length === 0) {
               lista.innerHTML =
-                '<div class="p-3 text-center text-muted">Nenhum pedido arquivado.</div>';
+                '<div class="p-3 text-center text-muted">Vazio.</div>';
               return;
             }
             data.forEach((item) => {
-              lista.innerHTML += `
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <div>
-                                <strong>${item.titulo}</strong> <br>
-                                <small class="text-muted">${item.cliente} - ${item.data}</small>
-                            </div>
-                            <button class="btn btn-sm btn-outline-primary" onclick="desarquivarCard(${item.id})">
-                                <i class="fas fa-undo"></i> Restaurar
-                            </button>
-                        </div>
-                    `;
+              lista.innerHTML += `<div class="list-group-item d-flex justify-content-between align-items-center"><div><strong>${item.titulo}</strong><br><small>${item.cliente}</small></div><button class="btn btn-sm btn-outline-primary" onclick="desarquivarCard(${item.id})">Restaurar</button></div>`;
             });
           });
       }
 
       function desarquivarCard(id) {
-        if (!confirm("Restaurar este pedido para o quadro?")) return;
-        fetch("/desarquivar/" + id, { method: "POST" })
-          .then((r) => r.json())
-          .then((data) => {
-            if (data.success) {
-              arquivosModal.hide();
-              location.reload();
-            } else {
-              alert("Erro ao restaurar");
-            }
-          });
+        if (confirm("Restaurar?"))
+          fetch("/desarquivar/" + id, { method: "POST" })
+            .then((r) => r.json())
+            .then((d) => {
+              if (d.success) {
+                arquivosModal.hide();
+                location.reload();
+              }
+            });
       }
-
       function excluirCard() {
         if (confirm("Excluir PERMANENTEMENTE?"))
           fetch("/excluir/" + document.getElementById("cardId").value, {
@@ -651,9 +921,8 @@
             if (r.ok) location.reload();
           });
       }
-
       function arquivarCard() {
-        if (confirm("Deseja arquivar este card? (Ele sumirá do quadro)"))
+        if (confirm("Arquivar?"))
           fetch("/arquivar/" + document.getElementById("cardId").value, {
             method: "POST",
           }).then((r) => {
@@ -684,15 +953,12 @@
           }
         });
 
-      // --- AUTO REFRESH & CHAT & SONS ---
       let versaoLocal = null;
       let lastChatId = 0;
       let localLastCardId = 0;
       let mousePressionado = false;
-
       document.body.onmousedown = () => (mousePressionado = true);
       document.body.onmouseup = () => (mousePressionado = false);
-
       const chatOffcanvas = document.getElementById("chatOffcanvas");
       chatOffcanvas.addEventListener("shown.bs.offcanvas", function () {
         document
@@ -705,7 +971,7 @@
           if (type === "msg") document.getElementById("soundMsg").play();
           if (type === "card") document.getElementById("soundCard").play();
         } catch (e) {
-          console.log("Som bloqueado pelo navegador", e);
+          console.log("Som bloqueado", e);
         }
       }
 
@@ -724,19 +990,23 @@
             if (data.timestamp > versaoLocal) {
               if (data.last_card_id > localLastCardId) {
                 playSound("card");
+                localLastCardId = data.last_card_id;
               }
-              setTimeout(() => location.reload(), 500);
+              const modalAberto = document.querySelector(".modal.show");
+              // ATUALIZAÇÃO: Tempo aumentado para 2500ms para o som terminar
+              if (!modalAberto) {
+                setTimeout(() => location.reload(), 2500);
+              }
               return;
             }
             if (data.chat_id > lastChatId) {
               lastChatId = data.chat_id;
               carregarChat();
               playSound("msg");
-              if (!chatOffcanvas.classList.contains("show")) {
+              if (!chatOffcanvas.classList.contains("show"))
                 document
                   .getElementById("btnChatGlobal")
                   .classList.add("chat-notification");
-              }
             }
           })
           .catch((err) => console.error(err));
@@ -762,7 +1032,6 @@
             box.scrollTop = box.scrollHeight;
           });
       }
-
       function enviarMensagem(e) {
         e.preventDefault();
         let input = document.getElementById("msgInput");
@@ -777,16 +1046,13 @@
           carregarChat();
         });
       }
-
       function limparChat() {
-        if (confirm("Tem certeza que deseja apagar TODAS as mensagens?")) {
+        if (confirm("Apagar chat?")) {
           fetch("/chat/limpar", { method: "POST" })
             .then((r) => r.json())
             .then((data) => {
               if (data.success) {
                 carregarChat();
-              } else {
-                alert("Erro: " + (data.error || "Desconhecido"));
               }
             });
         }

@@ -16,7 +16,7 @@ app.config['SECRET_KEY'] = 'chave-super-secreta-printflow'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'printflow.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
+app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024
 
 db = SQLAlchemy(app)
 login_manager = LoginManager()

@@ -1,24 +1,45 @@
 # 🖨️ PrintFlow - Sistema de Gestão de Produção Gráfica
 
-O **PrintFlow** é um sistema web de gestão estilo Kanban desenvolvido para otimizar o fluxo de trabalho em gráficas e empresas de comunicação visual. Ele permite acompanhar pedidos desde o atendimento até a expedição, com comunicação em tempo real entre os setores.
+> **Versão Atual:** v2.3 (Mobile First & WhatsApp Integration)
 
-## 🚀 Funcionalidades
+O **PrintFlow** é um sistema web de gestão estilo Kanban desenvolvido sob medida para otimizar o fluxo de trabalho em gráficas e empresas de comunicação visual. Focado em **performance local** e **usabilidade**, ele elimina a dependência de internet externa e centraliza a comunicação da equipe.
 
-- **Quadro Kanban Interativo:** Arraste e solte (Drag & Drop) para mover pedidos entre setores (Atendimento, Impressão, Produção, Expedição).
-- **Chat em Tempo Real:** Comunicação interna integrada com notificações sonoras e visuais.
-- **Status Personalizáveis:** Etiquetas coloridas para indicar o estado do pedido (Fila, Rodando, Aguardando Material, etc.).
-- **Gestão de Arquivos:** Upload e visualização de prints/artes diretamente no card do pedido.
-- **Sistema de Arquivamento:** Limpeza visual do quadro sem perda de histórico.
-- **Controle de Acesso:** Níveis de permissão para Administradores e Colaboradores.
-- **Modo Servidor Local:** Configurado para rodar em rede local via **Waitress** ou como executável portátil (`.exe`).
+## 🚀 Funcionalidades Principais
+
+### 📋 Gestão Visual (Kanban)
+
+- **Drag & Drop Fluido:** Arraste e solte pedidos entre setores (Atendimento, Impressão, Produção, Expedição).
+- **Semáforo de Prazos:** (Em Breve) Indicadores visuais de urgência baseados na data de entrega.
+- **Busca Instantânea:** Filtre pedidos por nome do cliente, número da OS ou título em tempo real.
+
+### 📱 Mobile First (Novidade v2.3)
+
+- **Design Responsivo:** Interface 100% adaptada para Celulares e Tablets.
+- **Touch Otimizado:** Rolagem horizontal inteligente e gestos de toque calibrados para evitar arrastar cards por engano.
+- **Modais Fullscreen:** Telas de edição expandidas em dispositivos móveis para facilitar o preenchimento.
+
+### 💬 Comunicação Integrada
+
+- **Botão WhatsApp Inteligente:** O sistema detecta telefones no cadastro e gera um botão direto para iniciar conversa com o cliente já citando o pedido.
+- **Chat Interno (Local):** Chat da equipe com notificações sonoras ("Ding-Dong") e visuais em tempo real via polling.
+
+### 📂 Arquivos e Organização
+
+- **Upload de Prints:** Cole imagens (Ctrl+V) ou faça upload direto no card.
+- **Arquivamento:** Limpeza visual do quadro mantendo histórico recuperável.
+- **Segurança:** Níveis de acesso (Admin vs Colaborador) para proteção de dados sensíveis.
+
+---
 
 ## 🛠️ Tecnologias Utilizadas
 
-- **Backend:** Python, Flask, Flask-SQLAlchemy, Flask-Login.
-- **Frontend:** HTML5, Bootstrap 5, JavaScript (Fetch API), SortableJS (Drag & Drop).
-- **Banco de Dados:** SQLite.
-- **Servidor:** Waitress (WSGI).
-- **Compilação:** PyInstaller.
+- **Backend:** Python 3.10+, Flask, Flask-SQLAlchemy.
+- **Frontend:** HTML5, Bootstrap 5, JavaScript Puro (Vanilla JS).
+- **Banco de Dados:** SQLite (Ideal para aplicações portáteis/locais).
+- **Servidor:** Waitress (WSGI Production Server).
+- **Compilação:** PyInstaller (Gera executável .exe standalone).
+
+---
 
 ## 📦 Como Rodar o Projeto
 
@@ -28,43 +49,8 @@ O **PrintFlow** é um sistema web de gestão estilo Kanban desenvolvido para oti
 
 ### Passo a Passo
 
-1.  **Clone o repositório:**
-
-    ```bash
-    git clone [https://github.com/SEU-USUARIO/PrintFlow.git](https://github.com/SEU-USUARIO/PrintFlow.git)
-    cd PrintFlow
-    ```
-
-2.  **Crie e ative um ambiente virtual:**
-
-    ```bash
-    # Windows
-    python -m venv venv
-    venv\Scripts\activate
-
-    # Linux/Mac
-    python3 -m venv venv
-    source venv/bin/activate
-    ```
-
-3.  **Instale as dependências:**
-
-    ```bash
-    pip install -r requirements.txt
-    ```
-
-4.  **Execute o sistema:**
-    ```bash
-    python server.py
-    ```
-    O sistema estará disponível em: `http://localhost:8080` (ou no IP da máquina na rede local).
-
-> **Nota:** O banco de dados `printflow.db` será criado automaticamente na primeira execução com usuário `admin` e senha `admin`.
-
-## 🖥️ Criando o Executável (Windows)
-
-Para distribuir o sistema sem necessidade de instalar Python nas máquinas clientes, utilize o PyInstaller:
-
-```bash
-pyinstaller --name PrintFlow --onefile server.py
-```
+1. **Clone o repositório:**
+   ```bash
+   git clone [https://github.com/SEU-USUARIO/PrintFlow.git](https://github.com/SEU-USUARIO/PrintFlow.git)
+   cd PrintFlow
+   ```
