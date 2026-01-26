@@ -20,12 +20,11 @@
       body {
         background-color: #0079bf;
         font-family: "Segoe UI", sans-serif;
-        /* ALTERAÇÃO 1: Mudei de height fixo para min-height e liberei o scroll */
         min-height: 100vh;
         display: flex;
         flex-direction: column;
-        overflow-y: auto; /* Libera o scroll vertical da página */
-        overflow-x: hidden; /* Evita scroll lateral desnecessário na página inteira */
+        overflow-y: auto;
+        overflow-x: hidden;
       }
 
       /* --- NAVBAR RESPONSIVA --- */
@@ -38,7 +37,7 @@
         justify-content: space-between;
         backdrop-filter: blur(5px);
         flex-wrap: nowrap;
-        position: sticky; /* Mantém o menu no topo ao rolar */
+        position: sticky;
         top: 0;
         z-index: 1000;
       }
@@ -55,11 +54,10 @@
         }
       }
 
-      /* --- KANBAN BOARD (Área dos Cards) --- */
+      /* --- KANBAN BOARD --- */
       .board-canvas {
         flex-grow: 1;
         padding: 10px;
-        /* ALTERAÇÃO 2: Permite que essa área cresça e não esconda o scroll */
         overflow-x: auto;
         overflow-y: visible;
         white-space: nowrap;
@@ -68,7 +66,7 @@
         gap: 15px;
         scroll-snap-type: x mandatory;
         -webkit-overflow-scrolling: touch;
-        margin-bottom: 20px; /* Espaço para não colar no rodapé */
+        margin-bottom: 20px;
       }
 
       .kanban-list {
@@ -79,7 +77,6 @@
         padding: 10px;
         display: flex;
         flex-direction: column;
-        /* Mantém o scroll interno dos cards, mas limitado à altura da tela */
         max-height: calc(100vh - 100px);
         scroll-snap-align: start;
       }
@@ -88,7 +85,6 @@
         .kanban-list {
           width: 85vw;
           min-width: 85vw;
-          /* No mobile, reduz um pouco a altura máxima da lista para caber na tela */
           max-height: 80vh;
         }
         .board-canvas {
@@ -132,14 +128,15 @@
         cursor: grabbing;
       }
 
-      /* CORES DO SEMÁFORO */
+      /* CORES DO SEMÁFORO - CORRIGIDO */
+      /* Removemos o "background" para respeitar a cor do Status */
       .prazo-hoje {
         border-left-color: #dc3545 !important;
-        background: #fff5f5 !important;
+        /* background removido */
       }
       .prazo-amanha {
         border-left-color: #ffc107 !important;
-        background: #fffbf0 !important;
+        /* background removido */
       }
       .prazo-ok {
         border-left-color: #198754 !important;
@@ -330,6 +327,13 @@
         >
           <i class="fas fa-archive"></i>
         </button>
+        <a
+          href="/dashboard"
+          class="btn btn-light text-primary fw-bold btn-sm px-3 shadow-sm"
+          title="Dashboard"
+        >
+          <i class="fas fa-chart-pie"></i>
+        </a>
         <a
           href="/configuracoes"
           class="btn btn-light text-secondary fw-bold btn-sm px-3 shadow-sm"
@@ -993,7 +997,6 @@
                 localLastCardId = data.last_card_id;
               }
               const modalAberto = document.querySelector(".modal.show");
-              // ATUALIZAÇÃO: Tempo aumentado para 2500ms para o som terminar
               if (!modalAberto) {
                 setTimeout(() => location.reload(), 2500);
               }

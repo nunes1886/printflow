@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="pt-br">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Relatório de Produção - PrintFlow</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      body {
+        background-color: #f4f5f7;
+        font-family: "Segoe UI", sans-serif;
+      }
+      .card-kpi {
+        border: none;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        transition: transform 0.2s;
+      }
+      .icon-box {
+        font-size: 2rem;
+        opacity: 0.8;
+      }
+
+      /* Ajuste do Gráfico para não cortar */
+      .chart-container {
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        height: 400px;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+      }
+
+      /* --- ESTILOS DE IMPRESSÃO --- */
+      @media print {
+        body {
+          background-color: white;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+        .no-print {
+          display: none !important;
+        }
+        .card-kpi {
+          box-shadow: none;
+          border: 1px solid #ddd;
+        }
+        .chart-container {
+          box-shadow: none;
+          border: 1px solid #ddd;
+          page-break-inside: avoid;
+        }
+        .container {
+          max-width: 100%;
+          padding: 0;
+        }
+        h2 {
+          font-size: 1.5rem;
+          color: black !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <nav
+      class="navbar navbar-expand-lg navbar-dark bg-primary mb-4 px-3 shadow-sm no-print"
+    >
+      <div class="container-fluid p-0">
+        <a class="navbar-brand fw-bold" href="/"
+          ><i class="fas fa-layer-group me-2"></i>PrintFlow</a
+        >
+
+        <div class="d-flex align-items-center gap-3 ms-auto">
+          <form
+            action="/dashboard"
+            method="GET"
+            class="d-flex gap-2 align-items-center bg-white bg-opacity-10 p-1 rounded"
+          >
+            <input
+              type="date"
+              name="start"
+              class="form-control form-control-sm border-0"
+              title="Data Inicial"
+              value="{{ start_date }}"
+              style="max-width: 130px"
+            />
+            <span class="text-white small">até</span>
+            <input
+              type="date"
+              name="end"
+              class="form-control form-control-sm border-0"
+              title="Data Final"
+              value="{{ end_date }}"
+              style="max-width: 130px"
+            />
+            <button
+              type="submit"
+              class="btn btn-light btn-sm text-primary fw-bold"
+              title="Filtrar"
+            >
+              <i class="fas fa-filter"></i>
+            </button>
+            {% if start_date or end_date %}
+            <a
+              href="/dashboard"
+              class="btn btn-outline-light btn-sm border-0"
+              title="Limpar Filtro"
+            >
+              <i class="fas fa-times"></i>
+            </a>
+            {% endif %}
+          </form>
+
+          <div class="vr text-white opacity-50"></div>
+
+          <button
+            onclick="window.print()"
+            class="btn btn-light btn-sm fw-bold text-primary"
+          >
+            <i class="fas fa-print me-1"></i> Imprimir
+          </button>
+          <a href="/" class="btn btn-outline-light btn-sm fw-bold">
+            <i class="fas fa-arrow-left"></i> Voltar
+          </a>
+        </div>
+      </div>
+    </nav>
+
+    <div class="container">
+      <div class="d-flex justify-content-between align-items-end mb-4">
+        <div>
+          <h2 class="text-secondary mb-0">
+            <i class="fas fa-chart-pie me-2"></i>Relatório Geral
+          </h2>
+          <small class="text-muted" id="dataRelatorio">Gerado em: </small>
+
+          {% if start_date or end_date %}
+          <div
+            class="mt-2 p-2 bg-warning bg-opacity-10 border border-warning rounded text-dark d-inline-block"
+          >
+            <strong><i class="fas fa-filter me-1"></i>Período Filtrado:</strong>
+            {{ start_date | default('Início') }} até {{ end_date |
+            default('Hoje') }}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="row mb-4 g-3">
+        <div class="col-md-4 col-4">
+          <div
+            class="card card-kpi bg-white p-3 border-start border-5 border-primary"
+          >
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <div class="text-muted small fw-bold text-uppercase">
+                  Total (Período)
+                </div>
+                <div class="h2 mb-0 fw-bold text-primary">{{ total }}</div>
+              </div>
+              <div class="icon-box text-primary no-print">
+                <i class="fas fa-tasks"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4 col-4">
+          <div
+            class="card card-kpi bg-white p-3 border-start border-5 border-warning"
+          >
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <div class="text-muted small fw-bold text-uppercase">
+                  Entrega Hoje
+                </div>
+                <div class="h2 mb-0 fw-bold text-warning">{{ para_hoje }}</div>
+              </div>
+              <div class="icon-box text-warning no-print">
+                <i class="fas fa-clock"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4 col-4">
+          <div
+            class="card card-kpi bg-white p-3 border-start border-5 border-danger"
+          >
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <div class="text-muted small fw-bold text-uppercase">
+                  Atrasados
+                </div>
+                <div class="h2 mb-0 fw-bold text-danger">{{ atrasados }}</div>
+              </div>
+              <div class="icon-box text-danger no-print">
+                <i class="fas fa-exclamation-triangle"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-4">
+        <div class="col-md-5">
+          <div class="chart-container">
+            <h5 class="text-secondary mb-3">Distribuição por Status</h5>
+            <canvas id="chartStatus"></canvas>
+          </div>
+        </div>
+        <div class="col-md-7">
+          <div class="chart-container">
+            <h5 class="text-secondary mb-3">Volume por Setor</h5>
+            <canvas id="chartSetor"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-5 text-center text-muted small d-none d-print-block">
+        <hr />
+        <p>PrintFlow v3.1 - Sistema de Gestão de Produção</p>
+      </div>
+    </div>
+
+    <script>
+      const hoje = new Date().toLocaleDateString('pt-BR') + ' às ' + new Date().toLocaleTimeString('pt-BR');
+      document.getElementById('dataRelatorio').innerText += hoje;
+
+      const labelsStatus = {{ labels_status | tojson }};
+      const valuesStatus = {{ values_status | tojson }};
+      const colorsStatus = {{ colors_status | tojson }};
+
+      const labelsSetor = {{ labels_setor | tojson }};
+      const valuesSetor = {{ values_setor | tojson }};
+
+      new Chart(document.getElementById('chartStatus'), {
+          type: 'doughnut',
+          data: {
+              labels: labelsStatus,
+              datasets: [{
+                  data: valuesStatus,
+                  backgroundColor: colorsStatus,
+                  borderWidth: 0
+              }]
+          },
+          options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                  legend: { position: 'right', labels: { boxWidth: 15, padding: 15 } }
+              },
+              layout: { padding: 10 }
+          }
+      });
+
+      new Chart(document.getElementById('chartSetor'), {
+          type: 'bar',
+          data: {
+              labels: labelsSetor,
+              datasets: [{
+                  label: 'Pedidos',
+                  data: valuesSetor,
+                  backgroundColor: '#0079bf',
+                  borderRadius: 5
+              }]
+          },
+          options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: { legend: { display: false } },
+              scales: { y: { beginAtZero: true, grid: { display: false } } }
+          }
+      });
+    </script>
+  </body>
+</html>

@@ -83,6 +83,9 @@ class Card(db.Model):
     # NOVOS CAMPOS
     created_by = db.Column(db.String(100)) # Quem criou
     is_archived = db.Column(db.Boolean, default=False) # Se está arquivado
+    
+    # --- NOVO CAMPO DO SEMÁFORO ---
+    prazo = db.Column(db.String(20)) # Formato YYYY-MM-DD
 
 class Mensagem(db.Model):
     __tablename__ = 'mensagens'
@@ -173,15 +176,7 @@ def logout():
 @app.route('/')
 @login_required
 def index():
-    # Carrega apenas cards NÃO arquivados
     setores = Setor.query.order_by(Setor.ordem).all()
-    # Filtra cards manualmente no Python ou ajusta query se preferir, 
-    # aqui vou filtrar na atribuição para o template para manter a ordem dos setores
-    
-    # Nota: O relationship 'cards' no Model Setor pega tudo. 
-    # Vamos passar uma lista filtrada para o template é mais chato, 
-    # Melhor: o template vai filtrar com um "if not card.is_archived"
-    
     lista_status = Status.query.all()
     return render_template('index.html', setores=setores, lista_status=lista_status, user=current_user)
 
@@ -232,7 +227,8 @@ def get_card_data(card_id):
         'cliente': card.cliente, 'setor_id': card.setor_id, 'status_id': card.status_id,
         'imagem_path': card.imagem_path,
         'created_by': card.created_by,
-        'created_at': card.data_criacao
+        'created_at': card.data_criacao,
+        'prazo': card.prazo # <--- Retorna o prazo para o modal
     })
 
 @app.route('/adicionar', methods=['POST'])
@@ -252,13 +248,13 @@ def adicionar():
         setor_id=s.id, 
         status_id=st.id, 
         imagem_path=nome_arquivo,
-        created_by=current_user.username, # Salva o criador
-        is_archived=False
+        created_by=current_user.username,
+        is_archived=False,
+        prazo=request.form.get('prazo') # <--- Salva o prazo do formulário
     )
     db.session.add(c)
     db.session.commit()
     
-    # Atualiza variáveis globais para disparar refresh e som
     ULTIMO_CARD_ID = c.id 
     atualizar_versao()
     
@@ -275,6 +271,8 @@ def editar():
             c.titulo = request.form.get('titulo')
             c.cliente = request.form.get('cliente')
             c.descricao = request.form.get('descricao')
+            c.prazo = request.form.get('prazo') # <--- Atualiza o prazo na edição
+            
             img = salvar_imagem_base64(request.form.get('imagem_base64'))
             if img: c.imagem_path = img
         db.session.commit(); atualizar_versao()
@@ -292,11 +290,11 @@ def mover():
         return jsonify({'success': True})
     return jsonify({'error': 'Erro'}), 404
 
-# --- NOVA ROTA ARQUIVAR ---
+# --- ARQUIVAR / EXCLUIR ---
+
 @app.route('/arquivar/<int:id>', methods=['POST'])
 @login_required
 def arquivar(id):
-    # Qualquer um pode arquivar ou só admin? Vou deixar só admin ou quem criou (mas aqui deixei admin por segurança igual excluir)
     if not current_user.is_admin: return jsonify({'error': 'Negado'}), 403
     c = Card.query.get(id)
     if c:
@@ -320,11 +318,9 @@ def configuracoes():
     if current_user.funcao != 'admin':
         return redirect(url_for('index'))
     
-    # 1. Carrega dados existentes (Setores e Status)
     setores = Setor.query.order_by(Setor.ordem).all()
     lista_status = Status.query.all()
     
-    # 2. Calcula dados novos (Armazenamento)
     upload_folder = os.path.join(app.root_path, 'static', 'uploads')
     total_size = 0
     total_files = 0
@@ -338,13 +334,12 @@ def configuracoes():
     
     size_mb = round(total_size / (1024 * 1024), 2)
     
-    # 3. Envia TUDO para o HTML
     return render_template('configuracoes.html', 
-                         setores=setores, 
-                         lista_status=lista_status,
-                         size_mb=size_mb, 
-                         total_files=total_files,
-                         user=current_user)
+                          setores=setores, 
+                          lista_status=lista_status,
+                          size_mb=size_mb, 
+                          total_files=total_files,
+                          user=current_user)
 
 @app.route('/setor/adicionar', methods=['POST'])
 @login_required
@@ -383,11 +378,9 @@ def excluir_status(id):
 def limpar_chat():
     if not current_user.is_admin:
         return jsonify({'error': 'Apenas admin pode limpar o chat.'}), 403
-    
     try:
         Mensagem.query.delete()
         db.session.commit()
-        # IMPORTANTE: Atualizar versão para forçar refresh nos outros
         atualizar_versao() 
         return jsonify({'success': True})
     except Exception as e:
@@ -398,7 +391,6 @@ def limpar_chat():
 @app.route('/api/arquivados')
 @login_required
 def api_arquivados():
-    # Busca os ultimos 50 cards arquivados
     cards = Card.query.filter_by(is_archived=True).order_by(Card.id.desc()).limit(50).all()
     lista = []
     for c in cards:
@@ -421,47 +413,38 @@ def desarquivar_card(card_id):
     if card:
         card.is_archived = False
         db.session.commit()
-        atualizar_versao() # Atualiza a tela de todo mundo
+        atualizar_versao() 
         return jsonify({'success': True})
     return jsonify({'error': 'Card não encontrado'}), 404
 
-# --- ROTA DE LIMPEZA DE IMAGENS (ESTAVA FALTANDO) ---
+# --- ROTA DE LIMPEZA DE IMAGENS ---
 @app.route('/api/limpar_imagens', methods=['POST'])
 @login_required
 def limpar_imagens():
     if current_user.funcao != 'admin':
         return jsonify({'error': 'Não autorizado'}), 403
         
-    dias = int(request.json.get('dias', 60)) # Padrão 60 dias
+    dias = int(request.json.get('dias', 60)) 
     
-    # Data limite: Hoje menos X dias
     data_limite_obj = datetime.now() - timedelta(days=dias)
-    
     cards_arquivados = Card.query.filter_by(is_archived=True).all()
     
     imagens_apagadas = 0
     espaco_liberado = 0
-    
     upload_folder = os.path.join(app.root_path, 'static', 'uploads')
     
     for card in cards_arquivados:
         try:
-            # Verifica se o card tem imagem
             if card.imagem_path:
                 caminho_arquivo = os.path.join(upload_folder, card.imagem_path)
-                
-                # Se o arquivo existe no disco
                 if os.path.exists(caminho_arquivo):
-                    # Verifica a data de modificação do ARQUIVO FÍSICO
                     timestamp_arquivo = os.path.getmtime(caminho_arquivo)
                     data_arquivo = datetime.fromtimestamp(timestamp_arquivo)
                     
-                    # Se o arquivo for mais velho que a data limite
                     if data_arquivo < data_limite_obj:
                         tamanho = os.path.getsize(caminho_arquivo)
-                        os.remove(caminho_arquivo) # Deleta o arquivo
-                        
-                        card.imagem_path = None # Remove referência do banco (opcional, ou mantém como histórico que teve imagem)
+                        os.remove(caminho_arquivo)
+                        card.imagem_path = None
                         imagens_apagadas += 1
                         espaco_liberado += tamanho
         except Exception as e:
@@ -469,26 +452,99 @@ def limpar_imagens():
             continue
 
     db.session.commit()
-    
     mb_liberados = round(espaco_liberado / (1024 * 1024), 2)
     return jsonify({'success': True, 'qtd': imagens_apagadas, 'mb': mb_liberados})
 
+# --- ROTA DO DASHBOARD (NOVIDADE V3.0) ---
+# --- ROTA DO DASHBOARD COM FILTRO (v3.1) ---
+@app.route('/dashboard')
+@login_required
+def dashboard():
+    if not current_user.is_admin:
+        return redirect(url_for('index'))
+    
+    # 1. Pega as datas do filtro (se existirem na URL)
+    data_inicio = request.args.get('start')
+    data_fim = request.args.get('end')
+
+    # 2. Base da consulta (Apenas não arquivados)
+    query = Card.query.filter_by(is_archived=False)
+
+    # 3. Aplica o Filtro de Prazo (Se o usuário escolheu datas)
+    if data_inicio:
+        query = query.filter(Card.prazo >= data_inicio)
+    if data_fim:
+        query = query.filter(Card.prazo <= data_fim)
+
+    # Executa a busca no banco
+    cards_filtrados = query.all()
+
+    # 4. Calcula os Totais em Memória (Python) usando a lista filtrada
+    total_ativos = len(cards_filtrados)
+    
+    hoje_str = datetime.now().strftime('%Y-%m-%d')
+    atrasados = 0
+    para_hoje = 0
+    
+    # Dicionários para os Gráficos
+    contagem_status = {}
+    contagem_setor = {}
+
+    for c in cards_filtrados:
+        # Contagem de Prazos
+        if c.prazo:
+            if c.prazo < hoje_str:
+                atrasados += 1
+            elif c.prazo == hoje_str:
+                para_hoje += 1
+        
+        # Contagem para Gráfico de Status
+        nome_status = c.status_ref.nome if c.status_ref else 'Sem Status'
+        cor_status = c.status_ref.cor if c.status_ref else '#cccccc'
+        
+        if nome_status not in contagem_status:
+            contagem_status[nome_status] = {'qtd': 0, 'cor': cor_status}
+        contagem_status[nome_status]['qtd'] += 1
+
+        # Contagem para Gráfico de Setor
+        nome_setor = c.setor_ref.nome if c.setor_ref else 'Sem Setor'
+        if nome_setor not in contagem_setor:
+            contagem_setor[nome_setor] = 0
+        contagem_setor[nome_setor] += 1
+
+    # Prepara dados para o Chart.js
+    labels_status = list(contagem_status.keys())
+    values_status = [v['qtd'] for v in contagem_status.values()]
+    colors_status = [v['cor'] for v in contagem_status.values()]
+
+    labels_setor = list(contagem_setor.keys())
+    values_setor = list(contagem_setor.values())
+
+    return render_template('dashboard.html', 
+                           user=current_user,
+                           total=total_ativos,
+                           atrasados=atrasados,
+                           para_hoje=para_hoje,
+                           labels_status=labels_status,
+                           colors_status=colors_status,
+                           values_status=values_status,
+                           labels_setor=labels_setor,
+                           values_setor=values_setor,
+                           start_date=data_inicio, # Devolve a data pro HTML preencher o campo
+                           end_date=data_fim)
+
 if __name__ == '__main__':
-    # Cria o banco se não existir
     if not os.path.exists(os.path.join(basedir, 'printflow.db')):
         with app.app_context():
             db.create_all()
-            # Cria admin padrão
             if not Usuario.query.filter_by(username='admin').first():
                 u = Usuario(username='admin', funcao='admin')
                 u.set_password('admin')
                 db.session.add(u)
-            # Setores padrão
             if not Setor.query.first():
                  db.session.add(Setor(nome="Atendimento", ordem=1))
                  db.session.add(Setor(nome="Produção", ordem=2))
                  db.session.add(Setor(nome="Expedição", ordem=3))
-            # Status padrão
             if not Status.query.first():
                 db.session.add(Status(nome="Pendente", cor="gray"))
                 db.session.add(Status(nome="Concluído", cor="green"))
