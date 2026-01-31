@@ -26,7 +26,7 @@ login_manager.login_view = 'login'
 # --- CONTROLE DE VERSÃO E SONS ---
 ULTIMA_ATUALIZACAO = time.time()
 ULTIMO_CHAT_ID = 0
-ULTIMO_CARD_ID = 0 # Novo controle para som de card
+ULTIMO_CARD_ID = 0 
 
 def atualizar_versao():
     global ULTIMA_ATUALIZACAO
@@ -79,13 +79,9 @@ class Card(db.Model):
     setor_id = db.Column(db.Integer, db.ForeignKey('setores.id'))
     status_id = db.Column(db.Integer, db.ForeignKey('status.id'))
     status_ref = db.relationship('Status', lazy=True)
-    
-    # NOVOS CAMPOS
-    created_by = db.Column(db.String(100)) # Quem criou
-    is_archived = db.Column(db.Boolean, default=False) # Se está arquivado
-    
-    # --- NOVO CAMPO DO SEMÁFORO ---
-    prazo = db.Column(db.String(20)) # Formato YYYY-MM-DD
+    created_by = db.Column(db.String(100))
+    is_archived = db.Column(db.Boolean, default=False)
+    prazo = db.Column(db.String(20))
 
 class Mensagem(db.Model):
     __tablename__ = 'mensagens'
@@ -93,6 +89,27 @@ class Mensagem(db.Model):
     usuario = db.Column(db.String(100))
     texto = db.Column(db.Text)
     data_envio = db.Column(db.String(50))
+
+# --- NOVO: MODELOS DE ESTOQUE (v4.0) ---
+class Material(db.Model):
+    __tablename__ = 'materiais'
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(100), nullable=False)
+    unidade = db.Column(db.String(20), default='Unid') # Rolo, Metro, Litro
+    quantidade = db.Column(db.Float, default=0.0)
+    minimo = db.Column(db.Float, default=5.0) # Alerta de estoque baixo
+    historico = db.relationship('Movimentacao', backref='material', lazy=True, cascade="all, delete-orphan")
+
+class Movimentacao(db.Model):
+    __tablename__ = 'movimentacoes'
+    id = db.Column(db.Integer, primary_key=True)
+    material_id = db.Column(db.Integer, db.ForeignKey('materiais.id'), nullable=False)
+    tipo = db.Column(db.String(20), nullable=False) # 'ENTRADA' ou 'SAIDA'
+    quantidade = db.Column(db.Float, nullable=False)
+    usuario = db.Column(db.String(100)) # Aqui vamos salvar "Usuario > Setor"
+    data = db.Column(db.DateTime, default=datetime.now)
+
+# --- FIM MODELOS ---
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -116,11 +133,8 @@ def salvar_imagem_base64(base64_string):
 @app.route('/verificar_atualizacao')
 def verificar_atualizacao():
     global ULTIMO_CARD_ID
-    # Busca ID da ultima msg e ultimo card para tocar sons
     ultimo_msg = Mensagem.query.order_by(Mensagem.id.desc()).first()
     msg_id = ultimo_msg.id if ultimo_msg else 0
-    
-    # Se reiniciou o servidor, pega do banco
     if ULTIMO_CARD_ID == 0:
         last_c = Card.query.order_by(Card.id.desc()).first()
         if last_c: ULTIMO_CARD_ID = last_c.id
@@ -228,7 +242,7 @@ def get_card_data(card_id):
         'imagem_path': card.imagem_path,
         'created_by': card.created_by,
         'created_at': card.data_criacao,
-        'prazo': card.prazo # <--- Retorna o prazo para o modal
+        'prazo': card.prazo 
     })
 
 @app.route('/adicionar', methods=['POST'])
@@ -250,7 +264,7 @@ def adicionar():
         imagem_path=nome_arquivo,
         created_by=current_user.username,
         is_archived=False,
-        prazo=request.form.get('prazo') # <--- Salva o prazo do formulário
+        prazo=request.form.get('prazo')
     )
     db.session.add(c)
     db.session.commit()
@@ -271,7 +285,7 @@ def editar():
             c.titulo = request.form.get('titulo')
             c.cliente = request.form.get('cliente')
             c.descricao = request.form.get('descricao')
-            c.prazo = request.form.get('prazo') # <--- Atualiza o prazo na edição
+            c.prazo = request.form.get('prazo')
             
             img = salvar_imagem_base64(request.form.get('imagem_base64'))
             if img: c.imagem_path = img
@@ -373,6 +387,35 @@ def excluir_status(id):
     if s: db.session.delete(s); db.session.commit()
     return redirect(url_for('configuracoes'))
 
+@app.route('/editar_setor', methods=['POST'])
+@login_required
+def editar_setor():
+    if not current_user.is_admin:
+        return jsonify({'success': False})
+    
+    data = request.json
+    setor = Setor.query.get(data['id'])
+    if setor:
+        setor.nome = data['nome']
+        db.session.commit()
+        return jsonify({'success': True})
+    return jsonify({'success': False})
+
+@app.route('/editar_status', methods=['POST'])
+@login_required
+def editar_status():
+    if not current_user.is_admin:
+        return jsonify({'success': False})
+    
+    data = request.json
+    status = Status.query.get(data['id'])
+    if status:
+        status.nome = data['nome']
+        status.cor = data['cor']
+        db.session.commit()
+        return jsonify({'success': True})
+    return jsonify({'success': False})
+
 @app.route('/chat/limpar', methods=['POST'])
 @login_required
 def limpar_chat():
@@ -386,8 +429,6 @@ def limpar_chat():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     
-# --- NOVAS ROTAS PARA ARQUIVADOS ---
-
 @app.route('/api/arquivados')
 @login_required
 def api_arquivados():
@@ -417,7 +458,6 @@ def desarquivar_card(card_id):
         return jsonify({'success': True})
     return jsonify({'error': 'Card não encontrado'}), 404
 
-# --- ROTA DE LIMPEZA DE IMAGENS ---
 @app.route('/api/limpar_imagens', methods=['POST'])
 @login_required
 def limpar_imagens():
@@ -455,50 +495,39 @@ def limpar_imagens():
     mb_liberados = round(espaco_liberado / (1024 * 1024), 2)
     return jsonify({'success': True, 'qtd': imagens_apagadas, 'mb': mb_liberados})
 
-# --- ROTA DO DASHBOARD (NOVIDADE V3.0) ---
-# --- ROTA DO DASHBOARD COM FILTRO (v3.1) ---
 @app.route('/dashboard')
 @login_required
 def dashboard():
     if not current_user.is_admin:
         return redirect(url_for('index'))
     
-    # 1. Pega as datas do filtro (se existirem na URL)
     data_inicio = request.args.get('start')
     data_fim = request.args.get('end')
 
-    # 2. Base da consulta (Apenas não arquivados)
     query = Card.query.filter_by(is_archived=False)
 
-    # 3. Aplica o Filtro de Prazo (Se o usuário escolheu datas)
     if data_inicio:
         query = query.filter(Card.prazo >= data_inicio)
     if data_fim:
         query = query.filter(Card.prazo <= data_fim)
 
-    # Executa a busca no banco
     cards_filtrados = query.all()
-
-    # 4. Calcula os Totais em Memória (Python) usando a lista filtrada
     total_ativos = len(cards_filtrados)
     
     hoje_str = datetime.now().strftime('%Y-%m-%d')
     atrasados = 0
     para_hoje = 0
     
-    # Dicionários para os Gráficos
     contagem_status = {}
     contagem_setor = {}
 
     for c in cards_filtrados:
-        # Contagem de Prazos
         if c.prazo:
             if c.prazo < hoje_str:
                 atrasados += 1
             elif c.prazo == hoje_str:
                 para_hoje += 1
         
-        # Contagem para Gráfico de Status
         nome_status = c.status_ref.nome if c.status_ref else 'Sem Status'
         cor_status = c.status_ref.cor if c.status_ref else '#cccccc'
         
@@ -506,13 +535,11 @@ def dashboard():
             contagem_status[nome_status] = {'qtd': 0, 'cor': cor_status}
         contagem_status[nome_status]['qtd'] += 1
 
-        # Contagem para Gráfico de Setor
         nome_setor = c.setor_ref.nome if c.setor_ref else 'Sem Setor'
         if nome_setor not in contagem_setor:
             contagem_setor[nome_setor] = 0
         contagem_setor[nome_setor] += 1
 
-    # Prepara dados para o Chart.js
     labels_status = list(contagem_status.keys())
     values_status = [v['qtd'] for v in contagem_status.values()]
     colors_status = [v['cor'] for v in contagem_status.values()]
@@ -530,8 +557,96 @@ def dashboard():
                            values_status=values_status,
                            labels_setor=labels_setor,
                            values_setor=values_setor,
-                           start_date=data_inicio, # Devolve a data pro HTML preencher o campo
+                           start_date=data_inicio,
                            end_date=data_fim)
+
+# --- ROTAS DE ESTOQUE (NOVO v4.0) ---
+
+@app.route('/estoque')
+@login_required
+def estoque():
+    # Carrega todos os materiais do banco
+    materiais = Material.query.order_by(Material.nome).all()
+    return render_template('estoque.html', materiais=materiais, user=current_user)
+
+@app.route('/estoque/adicionar_item', methods=['POST'])
+@login_required
+def adicionar_item_estoque():
+    if not current_user.is_admin:
+        return "Negado", 403
+    
+    novo = Material(
+        nome=request.form.get('nome'),
+        unidade=request.form.get('unidade'),
+        quantidade=float(request.form.get('quantidade')),
+        minimo=float(request.form.get('minimo'))
+    )
+    db.session.add(novo)
+    
+    # Registra movimentação inicial
+    mov = Movimentacao(
+        material=novo,
+        tipo='ENTRADA',
+        quantidade=novo.quantidade,
+        usuario=current_user.username
+    )
+    db.session.add(mov)
+    db.session.commit()
+    return redirect(url_for('estoque'))
+
+@app.route('/estoque/movimentar', methods=['POST'])
+@login_required
+def movimentar_estoque():
+    material_id = request.form.get('id')
+    tipo = request.form.get('tipo') # 'ENTRADA' ou 'SAIDA'
+    qtd = float(request.form.get('quantidade'))
+    destino = request.form.get('destino') # <--- PEGA O DESTINO DO FORMULÁRIO
+    
+    material = Material.query.get(material_id)
+    if material:
+        if tipo == 'SAIDA':
+            material.quantidade -= qtd
+            # --- TRUQUE DE MESTRE: Salva usuário + destino juntos ---
+            usuario_registro = f"{current_user.username} ➔ {destino}"
+        else:
+            material.quantidade += qtd
+            usuario_registro = current_user.username
+            
+        # Registra histórico
+        mov = Movimentacao(
+            material=material,
+            tipo=tipo,
+            quantidade=qtd,
+            usuario=usuario_registro # <--- Salva aqui
+        )
+        db.session.add(mov)
+        db.session.commit()
+        
+    return redirect(url_for('estoque'))
+
+@app.route('/estoque/excluir_item/<int:id>', methods=['POST'])
+@login_required
+def excluir_item_estoque(id):
+    if not current_user.is_admin: return "Negado", 403
+    m = Material.query.get(id)
+    if m:
+        db.session.delete(m)
+        db.session.commit()
+    return redirect(url_for('estoque'))
+
+@app.route('/estoque/historico/<int:id>')
+@login_required
+def historico_estoque(id):
+    movs = Movimentacao.query.filter_by(material_id=id).order_by(Movimentacao.data.desc()).limit(20).all()
+    data = []
+    for m in movs:
+        data.append({
+            'tipo': m.tipo,
+            'qtd': m.quantidade,
+            'usuario': m.usuario,
+            'data': m.data.strftime("%d/%m %H:%M")
+        })
+    return jsonify(data)
 
 if __name__ == '__main__':
     if not os.path.exists(os.path.join(basedir, 'printflow.db')):
@@ -549,5 +664,9 @@ if __name__ == '__main__':
                 db.session.add(Status(nome="Pendente", cor="gray"))
                 db.session.add(Status(nome="Concluído", cor="green"))
             db.session.commit()
-            
+    else:
+        # Garante que novas tabelas (Estoque) sejam criadas mesmo com banco existente
+        with app.app_context():
+            db.create_all()
+
     app.run(debug=True, host='0.0.0.0', port=5000)

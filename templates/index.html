@@ -18,12 +18,12 @@
     <style>
       /* --- ESTILOS GERAIS --- */
       body {
-        background-color: #0079bf;
+        background-color: #0079bf; /* Azul Trello */
         font-family: "Segoe UI", sans-serif;
         min-height: 100vh;
         display: flex;
         flex-direction: column;
-        overflow-y: auto;
+        overflow-y: hidden; /* Trava o scroll da página, usa só o do quadro */
         overflow-x: hidden;
       }
 
@@ -40,6 +40,7 @@
         position: sticky;
         top: 0;
         z-index: 1000;
+        height: 60px; /* Altura fixa para cálculo do canvas */
       }
 
       @media (max-width: 768px) {
@@ -58,15 +59,16 @@
       .board-canvas {
         flex-grow: 1;
         padding: 10px;
-        overflow-x: auto;
-        overflow-y: visible;
+        overflow-x: auto; /* Scroll lateral */
+        overflow-y: auto; /* Scroll vertical */
         white-space: nowrap;
         display: flex;
         align-items: flex-start;
         gap: 15px;
-        scroll-snap-type: x mandatory;
         -webkit-overflow-scrolling: touch;
-        margin-bottom: 20px;
+        scroll-behavior: smooth;
+        margin-bottom: 0;
+        padding-bottom: 20px; /* Espaço no final */
       }
 
       .kanban-list {
@@ -77,7 +79,8 @@
         padding: 10px;
         display: flex;
         flex-direction: column;
-        max-height: calc(100vh - 100px);
+        /* Cálculo preciso: 100vh - (Navbar + Padding + Margem) */
+        max-height: calc(100vh - 90px);
         scroll-snap-align: start;
       }
 
@@ -85,11 +88,14 @@
         .kanban-list {
           width: 85vw;
           min-width: 85vw;
-          max-height: 80vh;
+          max-height: calc(
+            100vh - 130px
+          ); /* Ajuste para mobile (por causa da barra de busca) */
         }
         .board-canvas {
           padding: 10px 15px;
           gap: 10px;
+          scroll-snap-type: x mandatory;
         }
       }
 
@@ -101,7 +107,7 @@
         scrollbar-width: thin;
       }
 
-      /* CARD ESTILO NOVO */
+      /* CARD ESTILO */
       .trello-card {
         border-radius: 8px;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
@@ -115,7 +121,21 @@
           transform 0.1s,
           box-shadow 0.1s;
         border-left: 5px solid transparent;
-        touch-action: pan-y;
+        touch-action: pan-y; /* Padrão PC */
+      }
+
+      /* --- CORREÇÃO MOBILE: LIBERAR O SCROLL --- */
+      @media (max-width: 768px) {
+        .trello-card {
+          cursor: default !important;
+          touch-action: auto !important; /* Permite rolar a tela tocando no card */
+        }
+        .kanban-list {
+          touch-action: auto !important;
+        }
+        .board-canvas {
+          touch-action: pan-x pan-y !important;
+        }
       }
 
       .trello-card.sortable-drag {
@@ -124,19 +144,12 @@
         box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
       }
 
-      .trello-card:active {
-        cursor: grabbing;
-      }
-
-      /* CORES DO SEMÁFORO - CORRIGIDO */
-      /* Removemos o "background" para respeitar a cor do Status */
+      /* SEMÁFORO */
       .prazo-hoje {
         border-left-color: #dc3545 !important;
-        /* background removido */
       }
       .prazo-amanha {
         border-left-color: #ffc107 !important;
-        /* background removido */
       }
       .prazo-ok {
         border-left-color: #198754 !important;
@@ -155,7 +168,26 @@
         box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
       }
 
-      /* CHAT STYLES */
+      /* BOTÕES DE NAVEGAÇÃO */
+      .btn-nav-card {
+        background: #f0f2f5;
+        border: 1px solid #dcdcdc;
+        color: #555;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        transition: all 0.2s;
+        padding: 8px 20px;
+        margin-top: 5px;
+      }
+      .btn-nav-card:hover {
+        background: #e2e4e7;
+        color: #0079bf;
+      }
+      .btn-nav-card:active {
+        background: #d0d2d5;
+      }
+
+      /* CHAT */
       .chat-btn {
         position: fixed;
         bottom: 20px;
@@ -180,7 +212,6 @@
           right: 15px;
         }
       }
-
       .chat-notification {
         background-color: #e74c3c !important;
         animation: pulse 1.5s infinite;
@@ -235,7 +266,7 @@
         margin-top: 4px;
       }
 
-      /* SCROLLBAR MODERNA */
+      /* SCROLLBAR */
       ::-webkit-scrollbar {
         width: 8px;
         height: 8px;
@@ -285,10 +316,20 @@
     <audio id="soundCard" src="/static/sounds/new_card.mp3"></audio>
 
     <div class="navbar-custom">
-      <a class="navbar-brand fw-bold" href="/" style="font-size: 1.5rem">
+      <a
+        class="navbar-brand fw-bold"
+        href="/"
+        style="font-size: 1.5rem"
+        title="Desenvolvido por Gledson Nunes"
+      >
         <i class="fas fa-layer-group text-primary me-2"></i>Print<span
           style="color: #0dcaf0"
           >Flow</span
+        >
+        <span
+          class="ms-2 text-white opacity-50 fw-normal"
+          style="font-size: 0.8rem; vertical-align: middle"
+          >v3.5</span
         >
       </a>
 
@@ -334,6 +375,9 @@
         >
           <i class="fas fa-chart-pie"></i>
         </a>
+        <a href="/estoque" class="btn btn-light btn-sm fw-bold text-success shadow-sm" title="Controle de Estoque">
+    <i class="fas fa-boxes"></i> <span class="d-none d-md-inline">Estoque</span>
+</a>
         <a
           href="/configuracoes"
           class="btn btn-light text-secondary fw-bold btn-sm px-3 shadow-sm"
@@ -365,8 +409,14 @@
     </div>
 
     <div class="board-canvas">
-      {% for setor in setores %}
-      <div class="kanban-list">
+      {% for setor in setores %} {% set is_first_col = loop.first %} {% set
+      is_last_col = loop.last %}
+
+      <div
+        class="kanban-list"
+        id="col-{{ setor.id }}"
+        data-setor-id="{{ setor.id }}"
+      >
         <div
           class="list-header fw-bold text-secondary mb-2 d-flex justify-content-between align-items-center"
         >
@@ -387,21 +437,34 @@
             class="trello-card"
             data-id="{{ card.id }}"
             data-prazo="{{ card.prazo }}"
-            onclick="abrirModalEditar('{{ card.id }}')"
             style="background-color: {{ card.status_ref.cor if card.status_ref and card.status_ref.cor else '#fff' }};"
           >
             <div class="d-flex justify-content-between align-items-start">
-              <div class="status-badge-light">
+              <div
+                class="status-badge-light"
+                onclick="event.stopPropagation(); abrirModalEditar('{{ card.id }}')"
+              >
                 {{ card.status_ref.nome if card.status_ref else 'Sem Status' }}
               </div>
-              <i class="fas fa-ellipsis-h small text-dark opacity-50"></i>
+              <i
+                class="fas fa-ellipsis-h small text-dark opacity-50"
+                onclick="abrirModalEditar('{{ card.id }}')"
+              ></i>
             </div>
 
-            <div class="fw-bold mb-1 text-dark" style="font-size: 1rem">
+            <div
+              class="fw-bold mb-1 text-dark"
+              style="font-size: 1rem"
+              onclick="abrirModalEditar('{{ card.id }}')"
+            >
               {{ card.titulo }}
             </div>
 
-            <div class="small text-dark fw-semibold mb-2" style="opacity: 0.8">
+            <div
+              class="small text-dark fw-semibold mb-2"
+              style="opacity: 0.8"
+              onclick="abrirModalEditar('{{ card.id }}')"
+            >
               <i class="fas fa-user-tie me-1"></i>
               <span class="cliente-texto">{{ card.cliente }}</span>
             </div>
@@ -410,6 +473,7 @@
             <div
               class="small mb-2 fw-bold badge-prazo-display"
               style="color: #555"
+              onclick="abrirModalEditar('{{ card.id }}')"
             >
               <i class="far fa-calendar-alt me-1"></i>
               <span class="data-formatada">{{ card.prazo }}</span>
@@ -425,7 +489,8 @@
             >
               <div class="d-flex align-items-center">
                 {% if card.imagem_path %}
-                <span class="badge bg-light text-primary border border-primary"
+                <span
+                  class="badge bg-light text-primary border border-primary me-2"
                   ><i class="fas fa-image"></i> Print</span
                 >
                 {% endif %} {% if user.is_admin %}
@@ -439,6 +504,7 @@
                 </button>
                 {% endif %}
               </div>
+
               {% if card.created_by %}
               <div
                 class="small text-dark fst-italic"
@@ -446,6 +512,32 @@
               >
                 Por: {{ card.created_by }}
               </div>
+              {% endif %}
+            </div>
+
+            <div
+              class="d-lg-none d-flex justify-content-between mt-2 pt-1 border-top border-dark border-opacity-10"
+            >
+              {% if not is_first_col %}
+              <button
+                class="btn-nav-card"
+                onclick="event.stopPropagation(); moverCardClique('{{ card.id }}', '{{ setor.id }}', -1)"
+                title="Voltar"
+              >
+                <i class="fas fa-arrow-left"></i>
+              </button>
+              {% else %}
+              <div></div>
+              {% endif %} {% if not is_last_col %}
+              <button
+                class="btn-nav-card"
+                onclick="event.stopPropagation(); moverCardClique('{{ card.id }}', '{{ setor.id }}', 1)"
+                title="Avançar"
+              >
+                <i class="fas fa-arrow-right"></i>
+              </button>
+              {% else %}
+              <div></div>
               {% endif %}
             </div>
           </div>
@@ -464,7 +556,6 @@
     >
       <i class="fas fa-comments"></i>
     </button>
-
     <div class="offcanvas offcanvas-end" tabindex="-1" id="chatOffcanvas">
       <div class="offcanvas-header bg-primary text-white">
         <h5 class="offcanvas-title">
@@ -531,7 +622,6 @@
                 class="alert alert-info py-1 small mb-3"
                 style="display: none"
               ></div>
-
               <div class="row">
                 <div class="col-md-7 border-end">
                   <label class="small fw-bold text-muted">Título / OS</label>
@@ -549,7 +639,6 @@
                     endif
                     %}
                   />
-
                   <div class="row">
                     <div class="col-8">
                       <label class="small fw-bold text-muted"
@@ -589,7 +678,6 @@
                       />
                     </div>
                   </div>
-
                   <label class="small fw-bold text-muted">Descrição</label>
                   <textarea
                     name="descricao"
@@ -706,51 +794,72 @@
       </div>
     </div>
 
-    <footer class="mt-5 py-3 bg-light text-muted text-center border-top">
-      <div class="container" style="font-size: 0.85rem">
-        <div class="row align-items-center">
-          <div class="col-md-6 text-md-start mb-2 mb-md-0">
-            <span
-              ><i class="fas fa-print me-1"></i>
-              <strong>PrintFlow</strong> v2.3</span
-            >
-            <span class="mx-2">|</span>
-            <span>Sistema de Gestão</span>
-          </div>
-          <div class="col-md-6 text-md-end">
-            Desenvolvido por <strong>Gledson Nunes</strong>
-            <i class="fas fa-code text-primary ms-1"></i>
-          </div>
-        </div>
-      </div>
-    </footer>
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <script>
-      document.querySelectorAll(".list-cards").forEach((el) => {
-        new Sortable(el, {
-          group: "kanban",
-          animation: 150,
-          delay: 150,
-          delayOnTouchOnly: true,
-          touchStartThreshold: 3,
-          onEnd: function (evt) {
-            fetch("/mover", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                id: evt.item.getAttribute("data-id"),
-                setor_id: evt.to.getAttribute("data-setor-id"),
-              }),
+      // VERIFICA SE O USUÁRIO É ADMIN (Injetado pelo Jinja)
+      const isAdmin = {{ 'true' if user.is_admin else 'false' }};
+
+      // 1. DRAG AND DROP (SÓ NO PC!)
+      // Se a tela for maior que 768px, liga o arrastar. Se for menor (celular), desliga.
+      const isMobile = window.innerWidth <= 768;
+
+      if (!isMobile) {
+        document.querySelectorAll(".list-cards").forEach((el) => {
+            new Sortable(el, {
+            group: "kanban",
+            animation: 150,
+            onEnd: function (evt) {
+                fetch("/mover", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    id: evt.item.getAttribute("data-id"),
+                    setor_id: evt.to.getAttribute("data-setor-id"),
+                }),
+                });
+            },
             });
-          },
         });
-      });
+      }
+
+      // 2. NAVEGAÇÃO POR SETAS
+      const ordemSetores = [
+        {% for setor in setores %}
+            "{{ setor.id }}",
+        {% endfor %}
+      ];
+
+      function moverCardClique(cardId, setorAtualId, direcao) {
+        const indexAtual = ordemSetores.indexOf(setorAtualId);
+        const indexNovo = indexAtual + direcao;
+
+        if (indexNovo >= 0 && indexNovo < ordemSetores.length) {
+            const novoSetorId = ordemSetores[indexNovo];
+            fetch("/mover", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id: cardId, setor_id: novoSetorId }),
+            }).then(() => { window.location.reload(); });
+        }
+      }
+
+      // 3. PRIVACIDADE: ESCONDER TELEFONES
+      // Função que troca números por **** se não for Admin
+      function ocultarTelefonesNaTela() {
+        if (isAdmin) return; // Se é admin, não faz nada
+
+        // Esconde nos Cards (Tela Principal)
+        document.querySelectorAll('.cliente-texto').forEach(el => {
+            // Regex: Pega sequências de 4 ou mais dígitos e troca por ****
+            el.innerText = el.innerText.replace(/\d{4,}/g, '****');
+        });
+      }
 
       document.addEventListener("DOMContentLoaded", function () {
         verificarTelefonesCards();
         aplicarSemaforo();
+        ocultarTelefonesNaTela(); // <--- Roda ao carregar a página
       });
 
       function aplicarSemaforo() {
@@ -769,14 +878,10 @@
           card.classList.remove("prazo-hoje", "prazo-amanha", "prazo-ok");
           if (diffDays < 0) {
             card.classList.add("prazo-hoje");
-            if (spanData)
-              spanData.innerHTML +=
-                ' <span class="badge bg-danger">ATRASADO</span>';
+            if (spanData) spanData.innerHTML += ' <span class="badge bg-danger">ATRASADO</span>';
           } else if (diffDays === 0) {
             card.classList.add("prazo-hoje");
-            if (spanData)
-              spanData.innerHTML +=
-                ' <span class="badge bg-danger">HOJE</span>';
+            if (spanData) spanData.innerHTML += ' <span class="badge bg-danger">HOJE</span>';
           } else if (diffDays === 1) {
             card.classList.add("prazo-amanha");
           } else {
@@ -786,9 +891,7 @@
       }
 
       var taskModal = new bootstrap.Modal(document.getElementById("taskModal"));
-      var arquivosModal = new bootstrap.Modal(
-        document.getElementById("modalArquivos"),
-      );
+      var arquivosModal = new bootstrap.Modal(document.getElementById("modalArquivos"));
       var form = document.getElementById("formTask");
 
       function abrirModalCriar() {
@@ -806,11 +909,18 @@
           .then((r) => r.json())
           .then((data) => {
             form.action = "/editar";
-            document.getElementById("modalTitle").innerText =
-              "Editando " + data.titulo;
+            document.getElementById("modalTitle").innerText = "Editando " + data.titulo;
             document.getElementById("cardId").value = data.id;
             document.getElementById("cardTitulo").value = data.titulo;
-            document.getElementById("cardCliente").value = data.cliente;
+
+            // LÓGICA DE PRIVACIDADE NO MODAL
+            let clienteInfo = data.cliente;
+            if (!isAdmin) {
+                // Esconde números também aqui quando abre o modal
+                clienteInfo = clienteInfo.replace(/\d{4,}/g, '****');
+            }
+            document.getElementById("cardCliente").value = clienteInfo;
+
             document.getElementById("cardDescricao").value = data.descricao;
             document.getElementById("cardSetor").value = data.setor_id;
             document.getElementById("cardStatus").value = data.status_id;
@@ -834,6 +944,7 @@
       }
 
       function verificarTelefonesCards() {
+        if (!isAdmin) return; // Se não é admin, nem tenta procurar botão de zap
         let cards = document.querySelectorAll(".trello-card");
         cards.forEach((card) => {
           let clienteEl = card.querySelector(".cliente-texto");
@@ -870,9 +981,7 @@
         });
       }
       function filtrarCardsMobile() {
-        let termo = document
-          .getElementById("searchInputMobile")
-          .value.toLowerCase();
+        let termo = document.getElementById("searchInputMobile").value.toLowerCase();
         let cards = document.querySelectorAll(".trello-card");
         cards.forEach((card) => {
           let textoCard = card.innerText.toLowerCase();
@@ -888,16 +997,14 @@
 
       function abrirModalArquivos() {
         let lista = document.getElementById("listaArquivados");
-        lista.innerHTML =
-          '<div class="p-3 text-center text-muted">Carregando...</div>';
+        lista.innerHTML = '<div class="p-3 text-center text-muted">Carregando...</div>';
         arquivosModal.show();
         fetch("/api/arquivados")
           .then((r) => r.json())
           .then((data) => {
             lista.innerHTML = "";
             if (data.length === 0) {
-              lista.innerHTML =
-                '<div class="p-3 text-center text-muted">Vazio.</div>';
+              lista.innerHTML = '<div class="p-3 text-center text-muted">Vazio.</div>';
               return;
             }
             data.forEach((item) => {
@@ -934,29 +1041,26 @@
           });
       }
 
-      document
-        .getElementById("pasteArea")
-        .addEventListener("paste", function (e) {
-          e.preventDefault();
-          if (e.clipboardData.items) {
-            for (let i = 0; i < e.clipboardData.items.length; i++) {
-              if (e.clipboardData.items[i].type.indexOf("image") !== -1) {
-                let blob = e.clipboardData.items[i].getAsFile();
-                let reader = new FileReader();
-                reader.onload = function (event) {
-                  document.getElementById("previewImage").src =
-                    event.target.result;
-                  document.getElementById("previewImage").style.display =
-                    "block";
-                  document.getElementById("inputImagemBase64").value =
-                    event.target.result;
-                };
-                reader.readAsDataURL(blob);
-              }
+      // PASTE IMAGE
+      document.getElementById("pasteArea").addEventListener("paste", function (e) {
+        e.preventDefault();
+        if (e.clipboardData.items) {
+          for (let i = 0; i < e.clipboardData.items.length; i++) {
+            if (e.clipboardData.items[i].type.indexOf("image") !== -1) {
+              let blob = e.clipboardData.items[i].getAsFile();
+              let reader = new FileReader();
+              reader.onload = function (event) {
+                document.getElementById("previewImage").src = event.target.result;
+                document.getElementById("previewImage").style.display = "block";
+                document.getElementById("inputImagemBase64").value = event.target.result;
+              };
+              reader.readAsDataURL(blob);
             }
           }
-        });
+        }
+      });
 
+      // AUTO REFRESH E CHAT
       let versaoLocal = null;
       let lastChatId = 0;
       let localLastCardId = 0;
@@ -965,18 +1069,14 @@
       document.body.onmouseup = () => (mousePressionado = false);
       const chatOffcanvas = document.getElementById("chatOffcanvas");
       chatOffcanvas.addEventListener("shown.bs.offcanvas", function () {
-        document
-          .getElementById("btnChatGlobal")
-          .classList.remove("chat-notification");
+        document.getElementById("btnChatGlobal").classList.remove("chat-notification");
       });
 
       function playSound(type) {
         try {
           if (type === "msg") document.getElementById("soundMsg").play();
           if (type === "card") document.getElementById("soundCard").play();
-        } catch (e) {
-          console.log("Som bloqueado", e);
-        }
+        } catch (e) { console.log("Som bloqueado", e); }
       }
 
       function checkUpdates() {
@@ -1007,9 +1107,7 @@
               carregarChat();
               playSound("msg");
               if (!chatOffcanvas.classList.contains("show"))
-                document
-                  .getElementById("btnChatGlobal")
-                  .classList.add("chat-notification");
+                document.getElementById("btnChatGlobal").classList.add("chat-notification");
             }
           })
           .catch((err) => console.error(err));
@@ -1022,8 +1120,7 @@
           .then((msgs) => {
             let html = "";
             if (msgs.length === 0) {
-              html =
-                '<div class="text-center text-muted small mt-5">Nenhuma mensagem.</div>';
+              html = '<div class="text-center text-muted small mt-5">Nenhuma mensagem.</div>';
             } else {
               msgs.forEach((m) => {
                 let cls = m.eu_mesmo ? "msg-me" : "msg-other";
