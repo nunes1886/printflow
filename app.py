@@ -428,7 +428,61 @@ def limpar_imagens():
 @login_required
 def dashboard():
     if not current_user.is_admin: return redirect(url_for('index'))
-    return render_template('dashboard.html', user=current_user, total=0, atrasados=0, para_hoje=0, labels_status=[], values_status=[], labels_setor=[], values_setor=[])
+    
+    # 1. Busca todos os dados ativos
+    all_cards = Card.query.filter_by(is_archived=False).all()
+    all_status = Status.query.all()
+    all_setores = Setor.query.order_by(Setor.ordem).all()
+
+    # 2. Calcula KPIs (Números do Topo)
+    total = len(all_cards)
+    atrasados = 0
+    para_hoje = 0
+    hoje_str = datetime.now().strftime('%Y-%m-%d')
+
+    for c in all_cards:
+        if c.prazo:
+            # Compara datas (string YYYY-MM-DD)
+            if c.prazo < hoje_str:
+                atrasados += 1
+            elif c.prazo == hoje_str:
+                para_hoje += 1
+
+    # 3. Prepara dados para o Gráfico de Status (Pizza)
+    labels_status = []
+    values_status = []
+    colors_status = [] # <--- A VARIÁVEL QUE FALTAVA E CAUSAVA O ERRO
+
+    for st in all_status:
+        # Conta quantos cards ativos tem nesse status
+        count = Card.query.filter_by(status_id=st.id, is_archived=False).count()
+        # Só adiciona no gráfico se tiver pelo menos 1 card (para não ficar poluído)
+        if count > 0:
+            labels_status.append(st.nome)
+            values_status.append(count)
+            colors_status.append(st.cor) # Pega a cor configurada no banco
+
+    # 4. Prepara dados para o Gráfico de Setores (Barras)
+    labels_setor = []
+    values_setor = []
+
+    for s in all_setores:
+        # Conta cards ativos neste setor
+        count = len([c for c in s.cards if not c.is_archived])
+        labels_setor.append(s.nome)
+        values_setor.append(count)
+
+    # 5. Envia tudo para o HTML (Incluindo a colors_status)
+    return render_template('dashboard.html', 
+                           user=current_user, 
+                           total=total, 
+                           atrasados=atrasados, 
+                           para_hoje=para_hoje,
+                           labels_status=labels_status, 
+                           values_status=values_status,
+                           colors_status=colors_status, # <--- CORREÇÃO AQUI
+                           labels_setor=labels_setor, 
+                           values_setor=values_setor)
 
 # --- ROTAS DE ESTOQUE ---
 
