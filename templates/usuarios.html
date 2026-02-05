@@ -1,8 +1,9 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-br">
   <head>
     <meta charset="UTF-8" />
-    <title>Gestão de Usuários - printFlow</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Usuários - PrintFlow</title>
     <link
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
       rel="stylesheet"
@@ -13,103 +14,118 @@
     />
     <style>
       body {
-        background-color: #0079bf;
+        background-color: #f4f5f7;
         font-family: "Segoe UI", sans-serif;
-        height: 100vh;
-        overflow: hidden;
-      }
-      .container-main {
-        background: #f4f5f7;
-        border-radius: 8px;
-        margin-top: 20px;
-        padding: 20px;
-        max-width: 900px;
-        height: 85vh;
-        overflow-y: auto;
       }
     </style>
   </head>
   <body>
-    <nav class="navbar navbar-dark bg-transparent px-3">
+    <nav class="navbar navbar-dark bg-primary mb-4 px-3 shadow-sm">
       <a class="navbar-brand fw-bold" href="/"
-        ><i class="fas fa-arrow-left me-2"></i>Voltar</a
+        ><i class="fas fa-layer-group me-2"></i>PrintFlow
+        <small>Usuários</small></a
       >
-      <span class="text-white">Admin: {{ user.username }}</span>
+      <a href="/" class="btn btn-light btn-sm fw-bold"
+        ><i class="fas fa-arrow-left"></i> Voltar</a
+      >
     </nav>
 
-    <div class="container container-main shadow">
-      <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3 class="text-secondary fw-bold">Equipe</h3>
-        <button class="btn btn-primary" onclick="abrirModalUsuario()">
-          <i class="fas fa-plus me-1"></i> Novo Usuário
+    <div class="container">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4>Gerenciar Equipe</h4>
+        <button class="btn btn-success" onclick="abrirModalUsuario()">
+          <i class="fas fa-plus"></i> Novo Usuário
         </button>
       </div>
 
-      {% with messages = get_flashed_messages() %} {% if messages %}
-      <div class="alert alert-info py-2 text-center">{{ messages[0] }}</div>
-      {% endif %} {% endwith %}
+      <div class="card shadow-sm border-0">
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="bg-light">
+                <tr>
+                  <th class="ps-4">Usuário</th>
+                  <th>Função</th>
+                  <th>Permissões Especiais</th>
+                  <th class="text-end pe-4">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for u in users %}
+                <tr>
+                  <td class="ps-4 fw-bold">{{ u.username }}</td>
+                  <td>
+                    {% if u.is_admin %}
+                    <span class="badge bg-primary">Admin (Total)</span>
+                    {% else %}
+                    <span class="badge bg-secondary">Colaborador</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if u.acesso_estoque or u.is_admin %}
+                    <span class="badge bg-success mb-1"
+                      ><i class="fas fa-boxes me-1"></i> Estoque</span
+                    >
+                    {% endif %}
 
-      <table class="table table-hover align-middle">
-        <thead>
-          <tr>
-            <th>Usuário</th>
-            <th class="text-center">Função</th>
-            <th class="text-end">Ações</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for u in users %}
-          <tr>
-            <td class="fw-bold">
-              <i class="fas fa-user-circle me-2 text-muted"></i>{{ u.username }}
-            </td>
-            <td class="text-center">
-              {% if u.is_admin %}
-              <span class="badge bg-danger">Admin</span>
-              {% else %}
-              <span class="badge bg-success">Colaborador</span>
-              {% endif %}
-            </td>
-            <td class="text-end">
-              <button
-                class="btn btn-sm btn-outline-primary me-1"
-                onclick="editarUsuario('{{u.id}}', '{{u.username}}', '{{u.funcao}}')"
-              >
-                <i class="fas fa-pen"></i>
-              </button>
+                    <br />
 
-              {% if u.id != user.id %}
-              <button
-                class="btn btn-sm btn-outline-danger"
-                onclick="excluirUsuario('{{u.id}}')"
-              >
-                <i class="fas fa-trash"></i>
-              </button>
-              {% endif %}
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+                    {% if u.is_admin %}
+                    <small class="text-muted">Acesso a todos os setores</small>
+                    {% else %} {% if u.acessos|length > 0 %} {% for setor in
+                    u.acessos %}
+                    <span class="badge bg-light text-dark border"
+                      >{{ setor.nome }}</span
+                    >
+                    {% endfor %} {% else %}
+                    <span class="badge bg-warning text-dark"
+                      >Todos os Setores</span
+                    >
+                    {% endif %} {% endif %}
+                  </td>
+                  <td class="text-end pe-4">
+                    <button
+                      class="btn btn-sm btn-outline-primary me-1"
+                      onclick="editarUsuario('{{ u.id }}', '{{ u.username }}', '{{ u.funcao }}', {{ u.acessos | map(attribute='id') | list }}, '{{ u.acesso_estoque }}')"
+                    >
+                      <i class="fas fa-edit"></i>
+                    </button>
+                    {% if u.id != user.id %}
+                    <button
+                      class="btn btn-sm btn-outline-danger"
+                      onclick="excluirUsuario('{{ u.id }}')"
+                    >
+                      <i class="fas fa-trash"></i>
+                    </button>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <div class="modal fade" id="userModal" tabindex="-1">
+    <div class="modal fade" id="modalUsuario" tabindex="-1">
       <div class="modal-dialog">
         <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="modalTitle">Usuário</h5>
-            <button
-              type="button"
-              class="btn-close"
-              data-bs-dismiss="modal"
-            ></button>
-          </div>
           <form action="/usuario/salvar" method="POST">
+            <div class="modal-header">
+              <h5 class="modal-title" id="tituloModal">Novo Usuário</h5>
+              <button
+                type="button"
+                class="btn-close"
+                data-bs-dismiss="modal"
+              ></button>
+            </div>
             <div class="modal-body">
               <input type="hidden" name="id" id="userId" />
+
               <div class="mb-3">
-                <label>Nome</label
-                ><input
+                <label>Nome de Usuário</label>
+                <input
                   type="text"
                   name="username"
                   id="userName"
@@ -118,35 +134,82 @@
                 />
               </div>
               <div class="mb-3">
-                <label>Senha</label
-                ><input
+                <label>Senha</label>
+                <input
                   type="password"
                   name="password"
                   class="form-control"
-                  placeholder="Vazio mantêm a atual"
+                  placeholder="Deixe em branco para manter a atual"
                 />
               </div>
-              <div class="mb-3 form-check form-switch">
+
+              <div class="form-check form-switch mb-3">
                 <input
                   class="form-check-input"
                   type="checkbox"
                   name="is_admin"
                   id="userAdmin"
-                /><label
-                  class="form-check-label text-danger fw-bold"
-                  for="userAdmin"
-                  >Administrador</label
+                  onchange="togglePermissoes()"
+                />
+                <label class="form-check-label fw-bold" for="userAdmin"
+                  >É Administrador?</label
                 >
+                <div class="form-text small">
+                  Admins têm acesso total a tudo.
+                </div>
+              </div>
+
+              <div id="divPermissoes" class="border rounded p-3 bg-light">
+                <h6 class="text-primary fw-bold mb-3">
+                  <i class="fas fa-lock-open me-1"></i> Permissões de Acesso
+                </h6>
+
+                <div class="form-check form-switch mb-3">
+                  <input
+                    class="form-check-input"
+                    type="checkbox"
+                    name="acesso_estoque"
+                    id="checkEstoque"
+                  />
+                  <label class="form-check-label fw-bold" for="checkEstoque">
+                    <i class="fas fa-boxes text-success me-1"></i> Acesso ao
+                    Estoque
+                  </label>
+                  <div class="form-text small">
+                    Permite ver e dar baixa em materiais.
+                  </div>
+                </div>
+
+                <hr />
+
+                <label class="fw-bold mb-2 text-secondary"
+                  >Colunas do Kanban:</label
+                >
+                <div class="row g-2">
+                  {% for setor in setores %}
+                  <div class="col-6">
+                    <div class="form-check">
+                      <input
+                        class="form-check-input check-setor"
+                        type="checkbox"
+                        name="acesso_setores"
+                        value="{{ setor.id }}"
+                        id="setor_{{ setor.id }}"
+                      />
+                      <label
+                        class="form-check-label"
+                        for="setor_{{ setor.id }}"
+                      >
+                        {{ setor.nome }}
+                      </label>
+                    </div>
+                  </div>
+                  {% endfor %}
+                </div>
               </div>
             </div>
             <div class="modal-footer">
-              <button
-                type="button"
-                class="btn btn-secondary"
-                data-bs-dismiss="modal"
-              >
-                Cancelar</button
-              ><button type="submit" class="btn btn-primary">Salvar</button>
+              <button type="submit" class="btn btn-primary">Salvar</button>
             </div>
           </form>
         </div>
@@ -155,29 +218,70 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-      var userModal = new bootstrap.Modal(document.getElementById("userModal"));
+      const modal = new bootstrap.Modal(
+        document.getElementById("modalUsuario"),
+      );
+
+      function togglePermissoes() {
+        const isAdmin = document.getElementById("userAdmin").checked;
+        const div = document.getElementById("divPermissoes");
+        // Se for admin, desabilita visualmente as permissões específicas
+        if (isAdmin) {
+          div.style.opacity = "0.5";
+          div.style.pointerEvents = "none";
+        } else {
+          div.style.opacity = "1";
+          div.style.pointerEvents = "auto";
+        }
+      }
+
       function abrirModalUsuario() {
-        document.getElementById("modalTitle").innerText = "Novo Usuário";
+        document.getElementById("tituloModal").innerText = "Novo Usuário";
         document.getElementById("userId").value = "";
         document.getElementById("userName").value = "";
         document.getElementById("userAdmin").checked = false;
-        userModal.show();
+        document.getElementById("checkEstoque").checked = false;
+
+        document
+          .querySelectorAll(".check-setor")
+          .forEach((c) => (c.checked = false));
+
+        togglePermissoes();
+        modal.show();
       }
-      function editarUsuario(id, nome, funcao) {
-        document.getElementById("modalTitle").innerText = "Editar Usuário";
+
+      function editarUsuario(id, nome, funcao, acessosIds, acessoEstoque) {
+        document.getElementById("tituloModal").innerText = "Editar Usuário";
         document.getElementById("userId").value = id;
         document.getElementById("userName").value = nome;
 
-        // Agora verificamos se o texto é 'admin'
-        document.getElementById("userAdmin").checked = funcao === "admin";
+        const isAdmin = funcao === "admin";
+        document.getElementById("userAdmin").checked = isAdmin;
 
-        userModal.show();
+        // Marca o estoque (True/False vem como string do python no template)
+        document.getElementById("checkEstoque").checked =
+          acessoEstoque === "True";
+
+        // Marca os setores
+        document.querySelectorAll(".check-setor").forEach((c) => {
+          if (acessosIds.includes(parseInt(c.value))) {
+            c.checked = true;
+          } else {
+            c.checked = false;
+          }
+        });
+
+        togglePermissoes();
+        modal.show();
       }
+
       function excluirUsuario(id) {
         if (confirm("Tem certeza?")) {
-          fetch("/usuario/excluir/" + id, { method: "POST" }).then((r) => {
-            if (r.ok) location.reload();
-          });
+          fetch("/usuario/excluir/" + id, { method: "POST" })
+            .then((r) => r.json())
+            .then((d) => {
+              if (d.success) location.reload();
+            });
         }
       }
     </script>

@@ -221,6 +221,7 @@
               >
                 <i class="fas fa-minus"></i>
               </button>
+
               <div class="text-center">
                 <div class="numero-qtd">
                   {{ m.quantidade | int if m.quantidade.is_integer() else
@@ -230,12 +231,17 @@
                   >Min: {{ m.minimo }}</small
                 >
               </div>
+
+              {% if user.is_admin %}
               <button
                 class="btn-circle btn-mais"
                 onclick="abrirMovimento('{{ m.id }}', '{{ m.nome }}', 'ENTRADA')"
               >
                 <i class="fas fa-plus"></i>
               </button>
+              {% else %}
+              <div style="width: 45px"></div>
+              {% endif %}
             </div>
           </div>
         </div>
@@ -453,7 +459,6 @@
               const cor = m.tipo === "ENTRADA" ? "text-success" : "text-danger";
               const icon =
                 m.tipo === "ENTRADA" ? "fa-arrow-down" : "fa-arrow-up";
-              // Como o usuario contem "Usuario > Destino", mostra tudo
               lista.innerHTML += `
                             <li class="list-group-item">
                                 <div class="d-flex justify-content-between">
