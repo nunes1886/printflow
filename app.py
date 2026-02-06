@@ -197,7 +197,7 @@ def index():
     # Ordena: Com Prazo primeiro (0), Sem Prazo depois (1).
     # Dentro dos com prazo: Data menor (mais urgente) primeiro.
     for setor in setores_visiveis:
-        setor.cards.sort(key=lambda card: (1 if not card.prazo else 0, card.prazo))
+        setor.cards.sort(key=lambda card: (1 if not card.prazo else 0, card.prazo or ""))
 
     return render_template('index.html', setores=setores_visiveis, lista_status=lista_status, user=current_user)
 
